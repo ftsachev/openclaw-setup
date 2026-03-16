@@ -54,16 +54,23 @@ export PATH="$(npm config get prefix)/bin:$PATH"
 
 If that fixes it, persist the PATH update in the shell profile the user is actually using.
 
-### Step 4: Save the Anthropic API key
+### Step 4: Choose the model provider and auth method
 
-Ask the user for their Anthropic API key from https://console.anthropic.com.
+Do **not** assume Anthropic, OAuth, or API-key auth.
 
-Persist it in the shell profile used by the runtime environment:
-- **macOS/Linux/WSL**: write to `~/.zshrc` or `~/.bashrc`
-- **Windows host**: if the user wants host-level access too, optionally mirror it with `setx`, but the OpenClaw runtime still uses the WSL shell environment
+Ask the user which provider they want to use. Good first-class options are:
+- **Anthropic** using an API key or setup-token
+- **Codex** using OpenAI Codex OAuth
+- **Gemini** using Gemini CLI OAuth
+- **OpenRouter** using an API key
 
-Example for bash/zsh:
+If the user explicitly wants a specific routed model through OpenRouter, accept that too, for example **Nemotron 120B**, as long as OpenRouter currently offers it.
 
+Persist credentials in the runtime shell environment when the provider uses environment variables.
+
+Examples:
+
+**Anthropic API key**
 ```bash
 SHELL_PROFILE="${ZDOTDIR:-$HOME}/.zshrc"
 [ -f "$SHELL_PROFILE" ] || SHELL_PROFILE="$HOME/.bashrc"
@@ -71,13 +78,28 @@ echo 'export ANTHROPIC_API_KEY="PASTE_KEY_HERE"' >> "$SHELL_PROFILE"
 source "$SHELL_PROFILE"
 ```
 
-This is a one-time setup. After sourcing, `ANTHROPIC_API_KEY` is available to all subsequent commands in the current shell session.
+**OpenRouter API key**
+```bash
+SHELL_PROFILE="${ZDOTDIR:-$HOME}/.zshrc"
+[ -f "$SHELL_PROFILE" ] || SHELL_PROFILE="$HOME/.bashrc"
+echo 'export OPENROUTER_API_KEY="PASTE_KEY_HERE"' >> "$SHELL_PROFILE"
+source "$SHELL_PROFILE"
+```
+
+For **Codex OAuth** and **Gemini OAuth**, prefer the provider's normal login flow rather than forcing an API-key path.
 
 ## Phase 2: Install and Connect
 
-### Step 5: Run the onboarding wizard safely
+### Step 5: Bootstrap OpenClaw with the chosen provider
 
-The wizard is interactive, so most coding agents should **not** run `openclaw onboard` without flags. Use the non-interactive flow instead:
+The wizard is interactive, so do not blindly run a TUI if the current agent cannot drive it.
+
+Provider-aware defaults:
+- If the user chose **Anthropic API key/setup-token**, use `openclaw onboard --non-interactive` with explicit token flags.
+- If the user chose **Codex OAuth** or **Gemini OAuth**, prefer the documented provider login flow first, then continue with OpenClaw onboarding/configuration.
+- If the user chose **OpenRouter**, configure OpenClaw to use OpenRouter credentials and provider settings rather than Anthropic-specific flags.
+
+For the Anthropic non-interactive path, use:
 
 ```bash
 openclaw onboard \
@@ -94,10 +116,13 @@ openclaw onboard \
   --skip-ui
 ```
 
+For other providers, do not invent flags. Inspect `openclaw onboard --help`, `openclaw config --help`, and the installed docs/help output, then choose the matching supported auth flow.
+
 Notes:
 - `--install-daemon` only applies when a supported service manager exists.
 - On **Windows via WSL**, do not assume `systemd` is enabled. If it is not available, use the manual background start path in Step 7.
 - Do not try to hand-author `~/.openclaw/openclaw.json`; let the wizard or `openclaw config set` create/update it.
+- If the user picked **OpenRouter**, preserve the exact requested model or route if OpenClaw supports setting it directly.
 
 ### Step 6: Connect a messaging channel
 

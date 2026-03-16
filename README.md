@@ -9,17 +9,27 @@ OpenClaw turns Claude into a 24/7 personal AI assistant - persistent memory, too
 Open a fresh **Claude Code** terminal and paste this:
 
 ```
-Read https://raw.githubusercontent.com/amanaiproduct/openclaw-setup/main/PROMPT.md and follow every step. Ask me for my Anthropic API key when you need it.
+Read https://raw.githubusercontent.com/amanaiproduct/openclaw/main/PROMPT.md and follow every step. Ask me which model provider I want to use when you need it.
 ```
 
-That's it. The agent will walk you through installation, security hardening, and first-run setup.
+That's it. The agent will walk you through installation, provider auth, security hardening, and first-run setup.
 
 ## Prerequisites
 
 - **macOS, Linux, or Windows 11 with WSL2**
 - **Node.js 22+** and **npm**
-- **An Anthropic API key** from [console.anthropic.com](https://console.anthropic.com)
+- **One model provider credential** for Anthropic, Codex, Gemini, OpenRouter, or another OpenClaw-supported provider
 - A phone with **WhatsApp** (or a Telegram bot token, or Slack app credentials)
+
+### Provider Notes
+
+This repo no longer assumes Anthropic-only bootstrap.
+
+Common good paths:
+- **Codex**: OpenAI Codex OAuth
+- **Gemini**: Gemini CLI OAuth
+- **Anthropic**: API key or setup-token
+- **OpenRouter**: API key, including routes to models like Nemotron 120B when supported by OpenRouter
 
 ### Windows Notes
 
@@ -28,16 +38,18 @@ Windows support in this repo is built around **WSL2 Ubuntu** for the OpenClaw ru
 ## What Happens
 
 1. The agent reads the setup prompt and installs OpenClaw
-2. It configures the gateway, API auth, and starts the service
-3. It connects your messaging channel (WhatsApp QR code, Telegram bot, etc.)
-4. You send your first message to start the identity/personality setup
-5. It hardens security: loopback binding, token auth, permissions, watchdog
+2. It asks which model provider to use and configures auth for that provider
+3. It configures the gateway, API auth, and starts the service
+4. It connects your messaging channel (WhatsApp QR code, Telegram bot, etc.)
+5. You send your first message to start the identity/personality setup
+6. It hardens security: loopback binding, token auth, permissions, watchdog
 
 ## What It Does
 
 ### Phase 1: Install & Connect
 - Installs OpenClaw via npm
-- Runs the onboarding wizard in a coding-agent-safe non-interactive mode
+- Selects a supported model provider and authenticates it
+- Runs the onboarding wizard in a coding-agent-safe mode or equivalent provider auth flow
 - Installs the gateway with the native service manager when available, or falls back to a background process
 
 ### Phase 2: Harden & Verify
