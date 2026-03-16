@@ -133,6 +133,20 @@ Ask the user which channel they want: **WhatsApp**, **Discord**, **Telegram**, o
 openclaw channels login --channel whatsapp --verbose
 ```
 
+After enabling WhatsApp, set it up with this team pattern:
+- direct chat with `claudia` by default
+- optional direct access to other agents only if the user explicitly wants them reachable individually
+- one shared all-agents WhatsApp group for visibility and coordination, but require explicit agent tagging there to avoid spam and accidental multi-agent replies
+
+Suggested tags in the shared group:
+- `@claudia`
+- `@assistant`
+- `@backend`
+- `@frontend`
+- `@devops`
+- `@devsecops`
+- `@qa-review`
+
 **Discord**:
 ```bash
 openclaw config set channels.discord.enabled true
@@ -320,7 +334,7 @@ Append these rules to `$WORKSPACE/AGENTS.md` without overwriting the file:
 - Never dump environment variables to chat
 
 ### Group Chat Rules
-- Only respond in groups when directly mentioned unless the workspace explicitly uses a Discord team-channel pattern.
+- Only respond in groups when directly mentioned unless the workspace explicitly uses a Discord team-channel pattern or a WhatsApp mention-required team group.
 - Never share the owner's private information in group chats.
 ```
 
@@ -403,6 +417,14 @@ Append this software-dev-team block to `$WORKSPACE/AGENTS.md` without overwritin
 - Secrets, auth, permission models, dependency/security review, and scanning go to `devsecops`.
 - Test plans, regression review, release confidence, and acceptance checks go to `qa-review`.
 
+### WhatsApp Team Chat Rules
+- Use direct chat with `claudia` as the default mobile/personal contact surface.
+- Allow optional direct access to specialist agents only if the user explicitly wants those agents reachable individually.
+- For the shared all-agents WhatsApp group, require explicit agent tags so not everyone replies to everything.
+- In the shared group, a message without an explicit agent tag should default to `claudia` or `assistant`, not wake every specialist.
+- Keep `claudia` as the main escalation and coordination point in WhatsApp.
+- `assistant` can handle status checks, reminders, summaries, and lightweight coordination in direct chat or the shared group.
+
 ### Discord Team Chat Rules
 - If Discord is enabled, treat it as a role-aware workspace chat, not just a generic bot channel.
 - Use one shared coordination channel for `claudia` and `assistant`.
@@ -473,6 +495,7 @@ Before declaring setup done, confirm the team routing and model-assignment rules
 - a user can review or change the assigned provider/model for any role by editing `$WORKSPACE/AGENT_MODELS.md`
 - a user can ask `assistant` for status, notes, reminders, and follow-up prep without pulling `claudia` into every small interaction
 - a user can talk to specialist agents from Discord channels dedicated to those roles
+- a user can use WhatsApp direct chat with `claudia` by default and optionally tag specific agents in a shared all-agents group without triggering replies from everyone
 
 ## Debugging Quick Reference
 

@@ -43,7 +43,7 @@ Windows support in this repo is built around **WSL2 Ubuntu** for the OpenClaw ru
 4. It connects your messaging channel (WhatsApp, Discord, Telegram, Slack, etc.)
 5. You send your first message to start the identity/personality setup
 6. It hardens security: loopback binding, token auth, permissions, watchdog
-7. It bootstraps a software-dev-team specialist group with routing, handoff rules, per-agent model assignments, and Discord-friendly role access
+7. It bootstraps a software-dev-team specialist group with routing, handoff rules, per-agent model assignments, Discord team access, and WhatsApp-safe team chat rules
 
 ## What It Does
 
@@ -67,7 +67,7 @@ Windows support in this repo is built around **WSL2 Ubuntu** for the OpenClaw ru
 - Allows each agent to use a different LLM or provider when the task warrants it
 - Adds routing rules so requests go to the right specialist instead of one generalist improvising everything
 - Adds handoff contracts, approval boundaries, verification gates, and a lightweight management interface for role-to-model assignments
-- Adds a Discord-friendly team-chat pattern so you can talk to the agents from your workspace channels
+- Adds Discord and WhatsApp team-chat patterns so you can talk to the agents safely from your workspace channels
 - Documents optional add-on specialists like `marketing`, `product-design`, `data-analyst`, and `research`
 
 ## What's Inside
@@ -89,7 +89,7 @@ This setup is opinionated about security:
 
 - **Gateway binds to localhost only** - not exposed to your network
 - **Token auth required** - no unauthenticated access
-- **Group chats require @mention** - bot won't speak unprompted in groups
+- **Group chats require @mention** - bot won't speak unprompted in groups unless the workspace explicitly uses a role-aware team channel pattern
 - **Config files are owner-only** - `chmod 700` on `~/.openclaw` in macOS/Linux/WSL
 - **Watchdog monitors health** - auto-restarts if gateway becomes unresponsive
 - **Prompt injection awareness** - workspace files train the agent to reject embedded commands
@@ -123,6 +123,26 @@ The default specialist set is optimized for software delivery:
 - `devops` - deploys, CI/CD, logs, incidents, health checks, and rollbacks
 - `devsecops` - auth, secrets, permissions, scanning, and security review
 - `qa-review` - test planning, regression review, acceptance checks, and release readiness
+
+## WhatsApp Team Chat
+
+WhatsApp is the default personal/mobile contact surface.
+
+Recommended pattern:
+- direct chat with `claudia` by default
+- optional direct chats or explicit routing for the other agents if the user wants them reachable individually
+- one shared all-agents group for team visibility, but require explicit agent tagging there so not everyone replies to everything
+
+Suggested tagging style in the shared group:
+- `@claudia`
+- `@assistant`
+- `@backend`
+- `@frontend`
+- `@devops`
+- `@devsecops`
+- `@qa-review`
+
+The workspace rules should treat the shared WhatsApp group as mention-required by default so a single message does not wake the whole team.
 
 ## Discord Team Chat
 
