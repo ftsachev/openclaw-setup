@@ -43,7 +43,7 @@ Windows support in this repo is built around **WSL2 Ubuntu** for the OpenClaw ru
 4. It connects your messaging channel (WhatsApp, Discord, Telegram, Slack, etc.)
 5. You send your first message to start the identity/personality setup
 6. It hardens security: loopback binding, token auth, permissions, watchdog
-7. It bootstraps a software-dev-team specialist group with routing, handoff rules, per-agent model assignments, Discord team access, and WhatsApp-safe team chat rules
+7. It bootstraps a software-dev-team specialist group with routing, handoff rules, per-agent model assignments, repo knowledge files, Discord team access, and WhatsApp-safe team chat rules
 
 ## What It Does
 
@@ -68,7 +68,7 @@ Windows support in this repo is built around **WSL2 Ubuntu** for the OpenClaw ru
 - Adds routing rules so requests go to the right specialist instead of one generalist improvising everything
 - Adds handoff contracts, approval boundaries, verification gates, and a lightweight management interface for role-to-model assignments
 - Adds Discord and WhatsApp team-chat patterns so you can talk to the agents safely from your workspace channels
-- Adds software-team operating rules for evidence-backed verification, resume/exit discipline, memory hygiene, and safe git behavior
+- Adds software-team operating rules for evidence-backed verification, resume/exit discipline, memory hygiene, safe git behavior, and repo knowledge refresh rules
 - Documents optional add-on specialists like `marketing`, `product-design`, `data-analyst`, and `research`
 
 ## What's Inside
@@ -110,6 +110,8 @@ Your agents wake up fresh each session but persist through files:
 | `IDENTITY.md` | Agent's name, vibe, emoji |
 | `USER.md` | Your info (name, timezone, preferences) |
 | `AGENT_MODELS.md` | Per-role provider/model assignments |
+| `REPOS.md` | Registry of active repos, owners, docs, and refresh rules |
+| `repo-notes/*.md` | Per-repo technical summaries and change notes |
 
 These are created by OpenClaw's onboarding. The hardening prompt adds security rules and operational patterns on top.
 
@@ -181,6 +183,20 @@ These are documented as optional add-ons rather than defaults:
 - `data-analyst` - metrics, dashboards, and experiment analysis
 - `research` - discovery, competitive scans, and broad external research
 
+## Repo Knowledge
+
+The setup now teaches the workspace how to track your active repositories without relying on stale chat context.
+
+It creates or updates:
+- `REPOS.md` as the source of truth for active repositories, paths, purpose, primary docs, and owners
+- `repo-notes/<repo>.md` files for concise repo-specific technical context
+- refresh rules so the team revisits repo knowledge when a repository `README.md`, `technical-reference.md`, or equivalent core architecture doc changes
+
+Recommended pattern:
+- keep one entry per active repo
+- link to the local path
+- list the main runtime, stack, current purpose, important commands, and key risks
+- refresh the repo note after meaningful documentation changes instead of relying on memory drift
 ## Workflow Rules
 
 The setup prompt also teaches the workspace a few high-value operating defaults:

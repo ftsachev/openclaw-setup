@@ -391,6 +391,71 @@ Additional platform checks:
 
 ## Phase 5: Software Dev Team Bootstrap
 
+### Step 14b: Create a repository knowledge registry
+
+Find the common repo root if the user has one, for example `~/github`, `~/src`, or another parent folder.
+
+Create or update `$WORKSPACE/REPOS.md` as the source of truth for active repositories the team should know about.
+
+Ask the user which repos should be tracked first. If the user's common repo root is obvious, inspect it and propose an initial list, but let the user confirm what is actually active.
+
+Append this structure if the file does not exist, or update matching entries if it already exists:
+
+```markdown
+# Active Repository Registry
+
+Use this file as the durable index of repositories the OpenClaw team works on.
+
+| Repo | Local Path | Purpose | Primary Stack | Main Docs | Owner / Lead | Status | Refresh Trigger |
+|------|------------|---------|---------------|-----------|--------------|--------|-----------------|
+| `example-repo` | `/absolute/path/to/example-repo` | short purpose | primary languages/frameworks | `README.md`, `docs/technical-reference.md` | user or team name | active | refresh when `README.md` or technical reference changes |
+
+## Rules
+- Keep this file concise and current.
+- Track only repositories the team actively works on or must understand.
+- Prefer absolute local paths.
+- Link each repo to its most important docs first.
+- When a repo's `README.md`, `technical-reference.md`, architecture doc, or equivalent core reference changes meaningfully, refresh that repo's note file.
+```
+
+For each tracked repo, create or update a matching file in `$WORKSPACE/repo-notes/<repo>.md` using this structure:
+
+```markdown
+# <repo>
+
+## Snapshot
+- purpose:
+- current focus:
+- stack:
+- runtime / deploy model:
+
+## Key Files
+- `README.md`
+- `docs/technical-reference.md`
+- other important references
+
+## Important Commands
+- dev:
+- test:
+- build:
+- deploy:
+
+## Architecture Notes
+- concise system shape
+- major components
+- important boundaries or risks
+
+## Working Agreements
+- repo-specific conventions the team should remember
+- where to look first for debugging
+
+## Refresh Rules
+- refresh this note when `README.md` changes materially
+- refresh this note when `technical-reference.md` or another architecture reference changes materially
+- refresh this note after major architecture, runtime, or workflow changes even if the docs lag behind
+```
+
+Do not dump the full contents of each repo's docs into workspace memory. Summarize the durable parts.
 ### Step 15: Create a specialist model assignment interface
 
 Find the workspace again if needed:
@@ -503,8 +568,9 @@ Append this software-dev-team block to `$WORKSPACE/AGENTS.md` without overwritin
 
 ### Memory Discipline
 - Treat chat history as temporary context, not durable memory.
-- Record durable preferences, decisions, recurring workflows, and open loops in `MEMORY.md`, `memory/*.md`, and related workspace files.
+- Record durable preferences, decisions, recurring workflows, open loops, and repo knowledge in `MEMORY.md`, `memory/*.md`, `REPOS.md`, and `repo-notes/*.md`.
 - Prefer concise curated summaries over raw transcript dumps.
+- Repo knowledge should live in repo notes and be refreshed from source docs when those docs change.
 
 ### Model Assignment Rules
 - Each specialist may use a different provider or model when the task warrants it.
@@ -545,6 +611,8 @@ Before declaring setup done, confirm the team routing and model-assignment rules
 - a user can ask `assistant` for status, notes, reminders, and follow-up prep without pulling `claudia` into every small interaction
 - a user can talk to specialist agents from Discord channels dedicated to those roles
 - a user can use WhatsApp direct chat with `claudia` by default and optionally tag specific agents in a shared all-agents group without triggering replies from everyone
+- the workspace has a `REPOS.md` registry plus `repo-notes/*.md` summaries for active repositories
+- when a tracked repo `README.md` or `technical-reference.md` changes materially, the matching repo note is refreshed instead of left stale
 
 ## Debugging Quick Reference
 
