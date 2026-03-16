@@ -12,7 +12,7 @@ Open a fresh **Claude Code** terminal and paste this:
 Read https://raw.githubusercontent.com/amanaiproduct/openclaw/main/PROMPT.md and follow every step. Ask me which model provider I want to use when you need it.
 ```
 
-That's it. The agent will walk you through installation, provider auth, security hardening, and first-run setup.
+That's it. The agent will walk you through installation, provider auth, security hardening, first-run setup, and an engineering-core multi-agent bootstrap.
 
 ## Prerequisites
 
@@ -43,6 +43,7 @@ Windows support in this repo is built around **WSL2 Ubuntu** for the OpenClaw ru
 4. It connects your messaging channel (WhatsApp QR code, Telegram bot, etc.)
 5. You send your first message to start the identity/personality setup
 6. It hardens security: loopback binding, token auth, permissions, watchdog
+7. It bootstraps an engineering-core specialist team with routing and handoff rules
 
 ## What It Does
 
@@ -60,6 +61,12 @@ Windows support in this repo is built around **WSL2 Ubuntu** for the OpenClaw ru
 - Installs a watchdog service for automatic crash recovery
 - Runs a full security audit
 - Verifies everything works end-to-end
+
+### Phase 3: Engineering Team Bootstrap
+- Defines a default six-agent engineering team: `main`, `backend`, `frontend`, `devops`, `devsecops`, `qa-review`
+- Adds routing rules so requests go to the right specialist instead of one generalist improvising everything
+- Adds handoff contracts, approval boundaries, and verification gates
+- Documents optional add-on specialists like `marketing`, `product-design`, `data-analyst`, and `research`
 
 ## What's Inside
 
@@ -101,6 +108,26 @@ Your agent wakes up fresh each session but persists through files:
 | `USER.md` | Your info (name, timezone, preferences) |
 
 These are created by OpenClaw's onboarding. The hardening prompt adds security rules and operational patterns on top.
+
+## Default Team
+
+The default specialist set is optimized for software delivery:
+
+- `main` - orchestrates work, clarifies scope, merges outputs, and plans follow-ups
+- `backend` - APIs, integrations, data flow, background jobs, and service logic
+- `frontend` - UI, accessibility, responsive behavior, and design implementation
+- `devops` - deploys, CI/CD, logs, incidents, health checks, and rollbacks
+- `devsecops` - auth, secrets, permissions, scanning, and security review
+- `qa-review` - test planning, regression review, acceptance checks, and release readiness
+
+## Optional Role Packs
+
+These are documented as optional add-ons rather than defaults:
+
+- `marketing` - launch copy, release notes, product messaging, docs polish
+- `product-design` - design systems, UX flows, and design reviews
+- `data-analyst` - metrics, dashboards, and experiment analysis
+- `research` - discovery, competitive scans, and broad external research
 
 ## Platform Support
 

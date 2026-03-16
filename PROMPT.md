@@ -334,6 +334,85 @@ Additional platform checks:
 - **Linux**: `systemctl --user status openclaw-watchdog.timer`
 - **Windows**: `schtasks /Query /TN OpenClawWatchdog`
 
+## Phase 5: Engineering-Core Team Bootstrap
+
+### Step 15: Add the default specialist team to the workspace
+
+Find the workspace again if needed:
+
+```bash
+WORKSPACE=$(openclaw config get agents.defaults.workspace)
+echo "$WORKSPACE"
+```
+
+Append this engineering-core team block to `$WORKSPACE/AGENTS.md` without overwriting the file:
+
+```markdown
+
+## Default Specialist Team
+
+### Core Team
+- `main` is the orchestrator. It clarifies goals, routes work, merges outputs, and owns the final answer.
+- `backend` owns APIs, business logic, integrations, persistence, background jobs, and service-level implementation.
+- `frontend` owns UI, design implementation, accessibility, responsive behavior, and user-facing polish.
+- `devops` owns deploys, CI/CD, logs, incidents, health checks, environments, and rollback procedures.
+- `devsecops` owns auth, secrets, permissions, scanning, dependency risk review, and security findings.
+- `qa-review` owns test planning, regression review, acceptance checks, release-readiness review, and cross-agent consistency checks.
+
+### Routing Rules
+- UI, accessibility, responsive issues, and design implementation go to `frontend`.
+- APIs, data flow, integrations, persistence, and jobs go to `backend`.
+- Deploys, logs, incidents, pipelines, environment checks, and rollback work go to `devops`.
+- Secrets, auth, permission models, dependency/security review, and scanning go to `devsecops`.
+- Test plans, regression review, release confidence, and acceptance checks go to `qa-review`.
+- Cross-functional requests, prioritization, and merged final responses go to `main`.
+
+### Handoff Contracts
+- `backend` returns changed services/files, contract impacts, migration or config risks, and verification notes.
+- `frontend` returns changed surfaces/files, UX impact, accessibility/responsive checks, and unresolved risks.
+- `devops` returns systems touched, commands run, environment impact, observed state, and rollback status.
+- `devsecops` returns findings, severity, exploitability, blocking issues, and remediation guidance.
+- `qa-review` returns scenarios tested, gaps not covered, blocking regressions, and a release recommendation.
+- `main` returns the merged answer, key decisions, risks, and the next 3 actions.
+
+### Approval Boundaries
+- `devops` must ask before production-impacting or irreversible changes.
+- `devsecops` must not silently rewrite security policy or credentials.
+- `frontend` and `backend` must ask before destructive data or schema changes.
+- `main` must ask before irreversible actions or broad workspace rewrites.
+
+### Verification Gates
+- `backend` must verify behavior with tests, logs, or direct checks before marking work complete.
+- `frontend` must verify UI behavior, responsiveness, and accessibility-impacting changes before marking work complete.
+- `devops` must verify service health and deployment state before marking work complete.
+- `devsecops` must classify findings clearly and verify that fixes address the reported risk.
+- `qa-review` must call out coverage gaps explicitly and block release if critical regressions remain.
+```
+
+### Step 16: Add optional role packs
+
+Append this optional section to `$WORKSPACE/AGENTS.md`:
+
+```markdown
+
+## Optional Role Packs
+
+Only add these specialists when the user explicitly wants them:
+
+- `marketing` for launch copy, release notes, product messaging, docs polish, and audience-specific communication.
+- `product-design` for design systems, UX flows, and design review.
+- `data-analyst` for metrics, dashboards, and experiment analysis.
+- `research` for broad discovery, competitive scans, and external research.
+```
+
+### Step 17: Validate the routing rules with examples
+
+Before declaring setup done, confirm the team routing works for these example cases:
+- a bug fix touching UI and API routes through `main`, then to `frontend` and `backend`
+- a deploy failure routes to `devops`
+- an auth or secret-handling concern routes to `devsecops`
+- a release confidence or regression question routes to `qa-review`
+
 ## Debugging Quick Reference
 
 ```bash
