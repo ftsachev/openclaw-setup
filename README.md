@@ -9,7 +9,7 @@ OpenClaw turns Claude into a 24/7 personal AI assistant - persistent memory, too
 Open a fresh **Claude Code** terminal and paste this:
 
 ```
-Read https://raw.githubusercontent.com/amanaiproduct/openclaw/main/PROMPT.md and follow every step. Ask me which model provider I want to use when you need it.
+Read https://raw.githubusercontent.com/ftsachev/openclaw-setup/windows-support/PROMPT.md and follow every step. Ask me which model provider I want to use when you need it.
 ```
 
 That's it. The agent will walk you through installation, provider auth, security hardening, first-run setup, and a software-dev-team multi-agent bootstrap.
@@ -159,8 +159,9 @@ A real setup running 24/7 on a headless Mac Mini with WhatsApp + iMessage, built
 
 ## Links
 
-- [OpenClaw](https://openclaw.ai) - [Docs](https://docs.openclaw.ai) - [Discord](https://discord.com/invite/clawd) - [GitHub](https://github.com/openclaw/openclaw)
+- [OpenClaw](https://openclaw.ai) - [Docs](https://docs.openclaw.ai) - [Discord](https://discord.com/invite/clawd) - [This Fork](https://github.com/ftsachev/openclaw-setup)
 
 ---
 
 Built by [Aman Khan](https://amanalikhan.com)
+
