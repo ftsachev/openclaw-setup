@@ -338,6 +338,44 @@ Append these rules to `$WORKSPACE/AGENTS.md` without overwriting the file:
 - Never share the owner's private information in group chats.
 ```
 
+### Step 13b: Add workflow and memory rules to the workspace
+
+Append these operating rules to `$WORKSPACE/AGENTS.md` without overwriting the file:
+
+```markdown
+
+## Workflow and Memory Rules
+
+### Evidence and Verification
+- Do not mark meaningful work done without evidence such as command output, a passing test, a health check, or another concrete verification artifact.
+- For debugging, prefer a systematic loop: reproduce, trace, compare, diagnose, fix, then verify.
+- After 3 failed fix attempts on the same issue, stop and present alternatives instead of thrashing.
+
+### Resume Rules
+- After an idle period or context reset, first review `MEMORY.md`, current daily notes, and any open task list before continuing.
+- Check git status before resuming implementation so unfinished local work is not ignored.
+- Resume with concrete next actions, not a vague "what next" reset.
+
+### Session Exit Rules
+- Before ending a session, review open tasks, uncommitted changes, and any decisions that should be written to memory.
+- Save unfinished work, follow-ups, and lessons learned into workspace memory files so the next session can resume cleanly.
+- Do not end a work session silently when important work is still in progress.
+
+### Memory Discipline
+- Treat chat history as temporary working context, not durable memory.
+- Keep long-term memory curated in `MEMORY.md`, `memory/*.md`, and other workspace files.
+- Summarize durable decisions, preferences, and recurring workflows instead of storing raw transcripts.
+
+### Git and Change Discipline
+- Prefer batched, meaningful commits over many tiny commits.
+- Keep commit messages high-level and outcome-focused.
+- Never mention AI tools in commit messages, release notes, or changelogs.
+- Never force-push unless the user explicitly asks for it.
+
+### Restricted File Safety
+- Do not read, print, or modify `.env`, `.env.*`, obvious secret stores, or private credential files unless the user explicitly wants manual guidance for changing them.
+- If a task depends on a restricted secret file, explain the exact manual steps the user should run instead of exposing the file contents.
+```
 ### Step 14: Final verification
 
 ```bash
@@ -456,6 +494,17 @@ Append this software-dev-team block to `$WORKSPACE/AGENTS.md` without overwritin
 - `devops` must verify service health and deployment state before marking work complete.
 - `devsecops` must classify findings clearly and verify that fixes address the reported risk.
 - `qa-review` must call out coverage gaps explicitly and block release if critical regressions remain.
+- `claudia` must not present a merged answer as final until the underlying specialist work has concrete verification where verification is reasonably possible.
+
+### Resume and Session Discipline
+- After idle time, context reset, or handoff, start by checking workspace memory, open tasks, and git state before new implementation.
+- When work pauses, capture unfinished items, decisions, and follow-ups in workspace memory instead of assuming the chat transcript is enough.
+- `assistant` should help maintain the carry-forward list so Claudia can resume work cleanly.
+
+### Memory Discipline
+- Treat chat history as temporary context, not durable memory.
+- Record durable preferences, decisions, recurring workflows, and open loops in `MEMORY.md`, `memory/*.md`, and related workspace files.
+- Prefer concise curated summaries over raw transcript dumps.
 
 ### Model Assignment Rules
 - Each specialist may use a different provider or model when the task warrants it.
@@ -512,3 +561,4 @@ For Windows host scheduled-task debugging:
 Get-ScheduledTask -TaskName OpenClawWatchdog
 Get-Content $env:USERPROFILE\openclaw\watchdog.log -Tail 50
 ```
+

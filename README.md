@@ -68,6 +68,7 @@ Windows support in this repo is built around **WSL2 Ubuntu** for the OpenClaw ru
 - Adds routing rules so requests go to the right specialist instead of one generalist improvising everything
 - Adds handoff contracts, approval boundaries, verification gates, and a lightweight management interface for role-to-model assignments
 - Adds Discord and WhatsApp team-chat patterns so you can talk to the agents safely from your workspace channels
+- Adds software-team operating rules for evidence-backed verification, resume/exit discipline, memory hygiene, and safe git behavior
 - Documents optional add-on specialists like `marketing`, `product-design`, `data-analyst`, and `research`
 
 ## What's Inside
@@ -180,6 +181,18 @@ These are documented as optional add-ons rather than defaults:
 - `data-analyst` - metrics, dashboards, and experiment analysis
 - `research` - discovery, competitive scans, and broad external research
 
+## Workflow Rules
+
+The setup prompt also teaches the workspace a few high-value operating defaults:
+
+- verify non-trivial work with evidence, not just claims
+- keep long-term memory curated instead of treating chat history as durable memory
+- use a resume checklist after idle periods so the team checks memory, open tasks, and git state before continuing
+- use a session-exit checklist so unfinished work, decisions, and follow-ups are not lost
+- prefer high-level, clean commit messages with no AI attribution or noisy implementation detail
+- avoid reading or exposing secrets from `.env`, secret folders, or private config files
+
+These rules are intended to transfer the best parts of a strong day-to-day engineering agent workflow into the OpenClaw workspace.
 ## Platform Support
 
 - **macOS**: full flow, including launchd templates in `config/`
@@ -197,3 +210,4 @@ A real setup running 24/7 on a headless Mac Mini with WhatsApp + iMessage, built
 ---
 
 Built by [Aman Khan](https://amanalikhan.com)
+
