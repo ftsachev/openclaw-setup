@@ -17,7 +17,7 @@ That's it. The agent will walk you through installation, provider auth, security
 ## Prerequisites
 
 - **macOS, Linux, or Windows 11 with WSL2 Fedora**
-- **Node.js 22+** and **npm**
+- **Node.js 22+**, **npm**, **git**, and **openssl** in the runtime distro
 - **One model provider credential** for Anthropic, Codex, Gemini, OpenRouter, or another OpenClaw-supported provider
 - A phone with **WhatsApp** or a **Discord** server if you want direct team chat access (Telegram and Slack are also supported)
 
@@ -26,14 +26,14 @@ That's it. The agent will walk you through installation, provider auth, security
 This repo no longer assumes Anthropic-only bootstrap.
 
 Common good paths:
-- **Codex**: OpenAI Codex OAuth
+- **Codex**: OpenAI Codex OAuth (interactive login flow)
 - **Gemini**: Gemini CLI OAuth
 - **Anthropic**: API key or setup-token
 - **OpenRouter**: API key, including routes to models like Nemotron 120B when supported by OpenRouter
 
 ### Windows Notes
 
-Windows support in this repo is built around **WSL2 Fedora** for the OpenClaw runtime, with optional **Windows Task Scheduler** only to wrap the WSL watchdog after sign-in. The gateway still binds to `127.0.0.1` inside WSL, which keeps the security model aligned with the macOS/Linux flow.
+Windows support in this repo is built around **WSL2 Fedora** for the OpenClaw runtime, with optional **Windows Task Scheduler** only to wrap the WSL watchdog after sign-in. Fedora distro names may vary in practice, such as `FedoraLinux` or `FedoraLinux-43`, so the helper script should auto-detect the installed Fedora distro by default. The gateway still binds to `127.0.0.1` inside WSL, which keeps the security model aligned with the macOS/Linux flow.
 
 ## What Happens
 
@@ -172,7 +172,7 @@ Recommended pattern:
 - `devsecops` - OpenRouter using `openrouter@nvidia/nemotron-3-super-120b-a12b:free`
 - `qa-review` - OpenRouter using `openrouter@nvidia/nemotron-3-super-120b-a12b:free`
 
-The setup also creates a simple management surface in the workspace so users can review and update role assignments without rewriting `AGENTS.md` from scratch. These defaults are prefilled for Codex OAuth and OpenRouter/Nemotron unless the user changes them during setup.
+The setup also creates a simple management surface in the workspace so users can review and update role assignments without rewriting `AGENTS.md` from scratch. These defaults are prefilled for Codex OAuth and OpenRouter/Nemotron unless the user changes them during setup. In practice, the Codex OAuth step is interactive, so machine-side setup can be completed first and provider login finished afterward.
 
 ## Optional Role Packs
 

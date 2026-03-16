@@ -30,10 +30,12 @@ On macOS/Linux/WSL, verify these exist. If anything is missing, install it:
 - Node.js 22+ (`node --version`)
 - npm (`npm --version`)
 - `curl`
+- `git`
+- `openssl`
 
 Install guidance:
 - **macOS**: use Homebrew if needed (`brew install node`)
-- **Fedora/WSL**: prefer `sudo dnf install -y nodejs npm curl` first; use `nvm` only if the packaged Node is unavailable or too old
+- **Fedora/WSL**: prefer `sudo dnf install -y nodejs npm curl git openssl` first; use `nvm` only if the packaged Node is unavailable or too old
 
 ### Step 3: Install OpenClaw
 
@@ -97,6 +99,7 @@ The wizard is interactive, so do not blindly run a TUI if the current agent cann
 Provider-aware defaults:
 - If the user chose **Anthropic API key/setup-token**, use `openclaw onboard --non-interactive` with explicit token flags.
 - If the user chose **Codex OAuth** or **Gemini OAuth**, prefer the documented provider login flow first, then continue with OpenClaw onboarding/configuration.
+- Treat **OpenAI Codex OAuth** as an interactive path. Do not expect `openclaw onboard --non-interactive` to complete the OAuth login for Codex.
 - If the user chose **OpenRouter**, configure OpenClaw to use OpenRouter credentials and provider settings rather than Anthropic-specific flags.
 
 For the Anthropic non-interactive path, use:
@@ -116,7 +119,7 @@ openclaw onboard \
   --skip-ui
 ```
 
-For other providers, do not invent flags. Inspect `openclaw onboard --help`, `openclaw config --help`, and the installed docs/help output, then choose the matching supported auth flow.
+For other providers, do not invent flags. Inspect `openclaw onboard --help`, `openclaw config --help`, and the installed docs/help output, then choose the matching supported auth flow. For Codex, use the current OpenClaw auth choice name supported by the installed CLI, such as `openai-codex`, rather than deprecated aliases.
 
 Notes:
 - `--install-daemon` only applies when a supported service manager exists.
@@ -293,7 +296,7 @@ Install a user service/timer that executes `~/.openclaw/watchdog.sh` every 2 min
 #### Windows with WSL2
 1. Copy `config/watchdog.sh` into `~/.openclaw/watchdog.sh` inside WSL and mark it executable.
 2. Copy `config/watchdog.ps1` somewhere stable on Windows, for example `%USERPROFILE%\openclaw\watchdog.ps1`.
-3. The PowerShell wrapper defaults to `FedoraLinux`. Update the script variables only if your Fedora distro is named differently or you need a different Linux user.
+3. The PowerShell wrapper auto-detects the first Fedora WSL distro when `Distro` is left blank. Set `Distro` explicitly only if you need a specific Fedora distro name or a different Linux user.
 4. Import or recreate the scheduled task using `config/openclaw-watchdog.xml`, or create the equivalent task manually.
 5. Run it at user logon every 2 minutes.
 
