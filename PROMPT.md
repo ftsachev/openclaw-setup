@@ -4,7 +4,7 @@
 
 ---
 
-You are setting up OpenClaw, a personal AI assistant gateway. Detect whether this machine is macOS, Linux, or Windows. If it is Windows, use **WSL2 Ubuntu** for the OpenClaw runtime and optionally use **Windows Task Scheduler** only to trigger the WSL watchdog script. Walk me through the setup step by step, ask for input when needed, and do not assume values you do not have.
+You are setting up OpenClaw, a personal AI assistant gateway for a software development team. Detect whether this machine is macOS, Linux, or Windows. If it is Windows, use **WSL2 Ubuntu** for the OpenClaw runtime and optionally use **Windows Task Scheduler** only to trigger the WSL watchdog script. Walk me through the setup step by step, ask for input when needed, and do not assume values you do not have.
 
 ## Phase 1: Prerequisites
 
@@ -201,12 +201,12 @@ openclaw channels logs --lines 20
 
 If a messaging channel is connected, send this first message:
 
-> "Hey, let's get you set up. Read BOOTSTRAP.md and let's figure out who you are."
+> "Hey Claudia, let's get you and the team set up. Read BOOTSTRAP.md and let's define the software team roles and identity."
 
 If no channel is connected yet, use local mode:
 
 ```bash
-openclaw agent --local --agent main --message "Hey, let's get you set up. Read BOOTSTRAP.md and let's figure out who you are."
+openclaw agent --local --agent claudia --message "Hey Claudia, let's get you and the team set up. Read BOOTSTRAP.md and let's define the software team roles and identity."
 ```
 
 Once the identity setup is complete, continue to hardening.
@@ -334,7 +334,7 @@ Additional platform checks:
 - **Linux**: `systemctl --user status openclaw-watchdog.timer`
 - **Windows**: `schtasks /Query /TN OpenClawWatchdog`
 
-## Phase 5: Engineering-Core Team Bootstrap
+## Phase 5: Software Dev Team Bootstrap
 
 ### Step 15: Create a specialist model assignment interface
 
@@ -356,7 +356,8 @@ Use this file to decide which provider/model each specialist should use. These a
 
 | Agent | Primary Role | Preferred Provider | Preferred Model | Fallback | Notes |
 |------|--------------|--------------------|-----------------|----------|-------|
-| `main` | orchestration | user choice | user choice | user choice | balance reasoning, coordination, and cost |
+| `claudia` | orchestration | user choice | user choice | user choice | main contact; balance reasoning, coordination, and cost |
+| `assistant` | intake and support | user choice | user choice | user choice | fast summaries, note capture, reminders, and follow-up prep |
 | `backend` | APIs and services | user choice | user choice | user choice | favor strong coding and systems reliability |
 | `frontend` | UI and UX implementation | user choice | user choice | user choice | favor strong coding plus design sensitivity |
 | `devops` | deploys and operations | user choice | user choice | user choice | favor tool use, logs, and concise ops output |
@@ -367,7 +368,7 @@ Use this file to decide which provider/model each specialist should use. These a
 - Each agent may use a different LLM if needed.
 - Cost-sensitive roles can use cheaper models when quality is still acceptable.
 - High-risk roles like `devsecops` and final `qa-review` should prefer the strongest reliable model available.
-- `main` is responsible for consulting this file before delegating work when model choice matters.
+- `claudia` is responsible for consulting this file before delegating work when model choice matters.
 - If a provider or model changes, update this file first, then any matching references in `AGENTS.md`.
 ```
 
@@ -375,14 +376,15 @@ Ask the user whether they want one shared model across all agents or different m
 
 ### Step 16: Add the default specialist team to the workspace
 
-Append this engineering-core team block to `$WORKSPACE/AGENTS.md` without overwriting the file:
+Append this software-dev-team block to `$WORKSPACE/AGENTS.md` without overwriting the file:
 
 ```markdown
 
-## Default Specialist Team
+## Default Software Dev Team
 
 ### Core Team
-- `main` is the orchestrator. It clarifies goals, routes work, merges outputs, and owns the final answer.
+- `claudia` is the main contact and orchestrator. She clarifies goals, routes work, merges outputs, and owns the final answer to the user.
+- `assistant` owns intake, note capture, recurring follow-ups, task grooming, status summaries, and coordination support for Claudia.
 - `backend` owns APIs, business logic, integrations, persistence, background jobs, and service-level implementation.
 - `frontend` owns UI, design implementation, accessibility, responsive behavior, and user-facing polish.
 - `devops` owns deploys, CI/CD, logs, incidents, health checks, environments, and rollback procedures.
@@ -390,28 +392,32 @@ Append this engineering-core team block to `$WORKSPACE/AGENTS.md` without overwr
 - `qa-review` owns test planning, regression review, acceptance checks, release-readiness review, and cross-agent consistency checks.
 
 ### Routing Rules
+- New requests, status updates, reminders, and note capture go to `assistant` first unless the user explicitly asks Claudia directly.
+- Cross-functional requests, prioritization, and merged final responses go to `claudia`.
 - UI, accessibility, responsive issues, and design implementation go to `frontend`.
 - APIs, data flow, integrations, persistence, and jobs go to `backend`.
 - Deploys, logs, incidents, pipelines, environment checks, and rollback work go to `devops`.
 - Secrets, auth, permission models, dependency/security review, and scanning go to `devsecops`.
 - Test plans, regression review, release confidence, and acceptance checks go to `qa-review`.
-- Cross-functional requests, prioritization, and merged final responses go to `main`.
 
 ### Handoff Contracts
+- `assistant` returns organized notes, follow-up queues, meeting/task summaries, and missing-information prompts.
 - `backend` returns changed services/files, contract impacts, migration or config risks, and verification notes.
 - `frontend` returns changed surfaces/files, UX impact, accessibility/responsive checks, and unresolved risks.
 - `devops` returns systems touched, commands run, environment impact, observed state, and rollback status.
 - `devsecops` returns findings, severity, exploitability, blocking issues, and remediation guidance.
 - `qa-review` returns scenarios tested, gaps not covered, blocking regressions, and a release recommendation.
-- `main` returns the merged answer, key decisions, risks, and the next 3 actions.
+- `claudia` returns the merged answer, key decisions, risks, owners, and the next 3 actions.
 
 ### Approval Boundaries
 - `devops` must ask before production-impacting or irreversible changes.
 - `devsecops` must not silently rewrite security policy or credentials.
 - `frontend` and `backend` must ask before destructive data or schema changes.
-- `main` must ask before irreversible actions or broad workspace rewrites.
+- `assistant` must not silently reprioritize work or close loops without Claudia's approval.
+- `claudia` must ask before irreversible actions or broad workspace rewrites.
 
 ### Verification Gates
+- `assistant` must keep action items and summaries aligned with the latest decisions before handing off.
 - `backend` must verify behavior with tests, logs, or direct checks before marking work complete.
 - `frontend` must verify UI behavior, responsiveness, and accessibility-impacting changes before marking work complete.
 - `devops` must verify service health and deployment state before marking work complete.
@@ -420,7 +426,8 @@ Append this engineering-core team block to `$WORKSPACE/AGENTS.md` without overwr
 
 ### Model Assignment Rules
 - Each specialist may use a different provider or model when the task warrants it.
-- `main` should prefer a balanced orchestrator model.
+- `claudia` should prefer a balanced orchestrator model.
+- `assistant` should prefer a fast, cost-efficient coordination model with strong summarization.
 - `backend` should prefer a strong coding and systems model.
 - `frontend` should prefer a strong coding model with UI/design sensitivity.
 - `devops` should prefer a model that is reliable with tools, logs, and operational reasoning.
@@ -448,11 +455,12 @@ Only add these specialists when the user explicitly wants them:
 ### Step 18: Validate the routing and model rules with examples
 
 Before declaring setup done, confirm the team routing and model-assignment rules work for these example cases:
-- a bug fix touching UI and API routes through `main`, then to `frontend` and `backend`
+- a bug fix touching UI and API routes through `claudia`, then to `frontend` and `backend`
 - a deploy failure routes to `devops`
 - an auth or secret-handling concern routes to `devsecops`
 - a release confidence or regression question routes to `qa-review`
 - a user can review or change the assigned provider/model for any role by editing `$WORKSPACE/AGENT_MODELS.md`
+- a user can ask `assistant` for status, notes, reminders, and follow-up prep without pulling `claudia` into every small interaction
 
 ## Debugging Quick Reference
 

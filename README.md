@@ -1,6 +1,6 @@
-# OpenClaw: Hardened Personal AI Setup
+# OpenClaw: Hardened Software Dev Team Setup
 
-A step-by-step setup prompt you can paste into **Claude Code** (or any coding agent) to install, configure, and harden [OpenClaw](https://openclaw.ai) on macOS, Linux, or Windows via WSL2.
+A step-by-step setup prompt you can paste into **Claude Code** (or any coding agent) to install, configure, and harden [OpenClaw](https://openclaw.ai) on macOS, Linux, or Windows via WSL2 for a software development team.
 
 OpenClaw turns Claude into a 24/7 personal AI assistant - persistent memory, tool access, and a direct line to your messaging apps (WhatsApp, Telegram, Slack, Discord, iMessage).
 
@@ -12,7 +12,7 @@ Open a fresh **Claude Code** terminal and paste this:
 Read https://raw.githubusercontent.com/amanaiproduct/openclaw/main/PROMPT.md and follow every step. Ask me which model provider I want to use when you need it.
 ```
 
-That's it. The agent will walk you through installation, provider auth, security hardening, first-run setup, and an engineering-core multi-agent bootstrap.
+That's it. The agent will walk you through installation, provider auth, security hardening, first-run setup, and a software-dev-team multi-agent bootstrap.
 
 ## Prerequisites
 
@@ -43,7 +43,7 @@ Windows support in this repo is built around **WSL2 Ubuntu** for the OpenClaw ru
 4. It connects your messaging channel (WhatsApp QR code, Telegram bot, etc.)
 5. You send your first message to start the identity/personality setup
 6. It hardens security: loopback binding, token auth, permissions, watchdog
-7. It bootstraps an engineering-core specialist team with routing, handoff rules, and per-agent model assignments
+7. It bootstraps a software-dev-team specialist group with routing, handoff rules, and per-agent model assignments
 
 ## What It Does
 
@@ -62,8 +62,8 @@ Windows support in this repo is built around **WSL2 Ubuntu** for the OpenClaw ru
 - Runs a full security audit
 - Verifies everything works end-to-end
 
-### Phase 3: Engineering Team Bootstrap
-- Defines a default six-agent engineering team: `main`, `backend`, `frontend`, `devops`, `devsecops`, `qa-review`
+### Phase 3: Software Dev Team Bootstrap
+- Defines a default seven-agent software team: `claudia`, `assistant`, `backend`, `frontend`, `devops`, `devsecops`, `qa-review`
 - Allows each agent to use a different LLM or provider when the task warrants it
 - Adds routing rules so requests go to the right specialist instead of one generalist improvising everything
 - Adds handoff contracts, approval boundaries, verification gates, and a lightweight management interface for role-to-model assignments
@@ -97,7 +97,7 @@ If you use Tailscale, the gateway can be exposed to your tailnet (but never to t
 
 ## After Setup
 
-Your agent wakes up fresh each session but persists through files:
+Your agents wake up fresh each session but persist through files:
 
 | File | What It Is |
 |------|-----------|
@@ -107,6 +107,7 @@ Your agent wakes up fresh each session but persists through files:
 | `memory/*.md` | Daily notes |
 | `IDENTITY.md` | Agent's name, vibe, emoji |
 | `USER.md` | Your info (name, timezone, preferences) |
+| `AGENT_MODELS.md` | Per-role provider/model assignments |
 
 These are created by OpenClaw's onboarding. The hardening prompt adds security rules and operational patterns on top.
 
@@ -114,7 +115,8 @@ These are created by OpenClaw's onboarding. The hardening prompt adds security r
 
 The default specialist set is optimized for software delivery:
 
-- `main` - orchestrates work, clarifies scope, merges outputs, and plans follow-ups
+- `claudia` - main contact and orchestrator; clarifies scope, routes work, merges outputs, and owns the final answer
+- `assistant` - intake, note capture, recurring follow-ups, task grooming, and coordination support
 - `backend` - APIs, integrations, data flow, background jobs, and service logic
 - `frontend` - UI, accessibility, responsive behavior, and design implementation
 - `devops` - deploys, CI/CD, logs, incidents, health checks, and rollbacks
@@ -126,7 +128,8 @@ The default specialist set is optimized for software delivery:
 Each default specialist can be assigned a different LLM if needed.
 
 Recommended pattern:
-- `main` - balanced orchestrator model
+- `claudia` - balanced orchestrator model
+- `assistant` - fast, cost-efficient coordination model with good summarization
 - `backend` - strong coding and systems model
 - `frontend` - strong coding model with UI/design sensitivity
 - `devops` - strong tool-using operational model
