@@ -126,12 +126,20 @@ Notes:
 
 ### Step 6: Connect a messaging channel
 
-Ask the user which channel they want: **WhatsApp**, **Telegram**, **Slack**, or **Discord**.
+Ask the user which channel they want: **WhatsApp**, **Discord**, **Telegram**, or **Slack**.
 
 **WhatsApp**:
 ```bash
 openclaw channels login --channel whatsapp --verbose
 ```
+
+**Discord**:
+```bash
+openclaw config set channels.discord.enabled true
+openclaw config set channels.discord.botToken "BOT_TOKEN_HERE"
+```
+
+After enabling Discord, treat it as the primary team-chat surface when the user wants to talk to multiple agents from one workspace.
 
 **Telegram**:
 ```bash
@@ -146,12 +154,6 @@ openclaw config set channels.slack.mode socket
 openclaw config set channels.slack.appToken "xapp-..."
 openclaw config set channels.slack.botToken "xoxb-..."
 openclaw config set channels.slack.groupPolicy open
-```
-
-**Discord**:
-```bash
-openclaw config set channels.discord.enabled true
-openclaw config set channels.discord.botToken "BOT_TOKEN_HERE"
 ```
 
 Restart the gateway after channel changes:
@@ -246,6 +248,7 @@ fi
 openclaw config set channels.whatsapp.groupPolicy allowlist
 openclaw config set 'channels.whatsapp.groups.*.requireMention' true
 openclaw config set channels.telegram.groupPolicy allowlist
+openclaw config set channels.discord.groupPolicy open 2>/dev/null || true
 ```
 
 ### Step 11: Run the security audit
@@ -317,8 +320,8 @@ Append these rules to `$WORKSPACE/AGENTS.md` without overwriting the file:
 - Never dump environment variables to chat
 
 ### Group Chat Rules
-- Only respond in groups when directly mentioned
-- Never share the owner's private information in group chats
+- Only respond in groups when directly mentioned unless the workspace explicitly uses a Discord team-channel pattern.
+- Never share the owner's private information in group chats.
 ```
 
 ### Step 14: Final verification
@@ -400,6 +403,14 @@ Append this software-dev-team block to `$WORKSPACE/AGENTS.md` without overwritin
 - Secrets, auth, permission models, dependency/security review, and scanning go to `devsecops`.
 - Test plans, regression review, release confidence, and acceptance checks go to `qa-review`.
 
+### Discord Team Chat Rules
+- If Discord is enabled, treat it as a role-aware workspace chat, not just a generic bot channel.
+- Use one shared coordination channel for `claudia` and `assistant`.
+- Optionally map specialist conversations to dedicated channels like `#backend`, `#frontend`, `#devops`, `#devsecops`, and `#qa-review`.
+- In Discord, route work by channel context first, then by explicit agent name mention if needed.
+- `claudia` remains the main escalation and coordination point across all Discord channels.
+- `assistant` can handle status checks, reminders, and task summaries in shared Discord channels without involving every specialist.
+
 ### Handoff Contracts
 - `assistant` returns organized notes, follow-up queues, meeting/task summaries, and missing-information prompts.
 - `backend` returns changed services/files, contract impacts, migration or config risks, and verification notes.
@@ -461,6 +472,7 @@ Before declaring setup done, confirm the team routing and model-assignment rules
 - a release confidence or regression question routes to `qa-review`
 - a user can review or change the assigned provider/model for any role by editing `$WORKSPACE/AGENT_MODELS.md`
 - a user can ask `assistant` for status, notes, reminders, and follow-up prep without pulling `claudia` into every small interaction
+- a user can talk to specialist agents from Discord channels dedicated to those roles
 
 ## Debugging Quick Reference
 

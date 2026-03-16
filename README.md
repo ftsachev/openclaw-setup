@@ -19,7 +19,7 @@ That's it. The agent will walk you through installation, provider auth, security
 - **macOS, Linux, or Windows 11 with WSL2**
 - **Node.js 22+** and **npm**
 - **One model provider credential** for Anthropic, Codex, Gemini, OpenRouter, or another OpenClaw-supported provider
-- A phone with **WhatsApp** (or a Telegram bot token, or Slack app credentials)
+- A phone with **WhatsApp** or a **Discord** server if you want direct team chat access (Telegram and Slack are also supported)
 
 ### Provider Notes
 
@@ -40,10 +40,10 @@ Windows support in this repo is built around **WSL2 Ubuntu** for the OpenClaw ru
 1. The agent reads the setup prompt and installs OpenClaw
 2. It asks which model provider to use and configures auth for that provider
 3. It configures the gateway, API auth, and starts the service
-4. It connects your messaging channel (WhatsApp QR code, Telegram bot, etc.)
+4. It connects your messaging channel (WhatsApp, Discord, Telegram, Slack, etc.)
 5. You send your first message to start the identity/personality setup
 6. It hardens security: loopback binding, token auth, permissions, watchdog
-7. It bootstraps a software-dev-team specialist group with routing, handoff rules, and per-agent model assignments
+7. It bootstraps a software-dev-team specialist group with routing, handoff rules, per-agent model assignments, and Discord-friendly role access
 
 ## What It Does
 
@@ -67,6 +67,7 @@ Windows support in this repo is built around **WSL2 Ubuntu** for the OpenClaw ru
 - Allows each agent to use a different LLM or provider when the task warrants it
 - Adds routing rules so requests go to the right specialist instead of one generalist improvising everything
 - Adds handoff contracts, approval boundaries, verification gates, and a lightweight management interface for role-to-model assignments
+- Adds a Discord-friendly team-chat pattern so you can talk to the agents from your workspace channels
 - Documents optional add-on specialists like `marketing`, `product-design`, `data-analyst`, and `research`
 
 ## What's Inside
@@ -123,6 +124,18 @@ The default specialist set is optimized for software delivery:
 - `devsecops` - auth, secrets, permissions, scanning, and security review
 - `qa-review` - test planning, regression review, acceptance checks, and release readiness
 
+## Discord Team Chat
+
+Discord is recommended when you want to talk to the team from one shared workspace.
+
+Recommended pattern:
+- one shared team channel for `claudia` and `assistant`
+- optional specialist channels like `#backend`, `#frontend`, `#devops`, `#devsecops`, `#qa-review`
+- route requests by channel or by explicit mention of the agent name
+- keep `claudia` as the main escalation and coordination point
+
+The setup prompt instructs the workspace rules to treat Discord as a role-aware team chat surface, not just a generic bot channel.
+
 ## Agent Model Assignment
 
 Each default specialist can be assigned a different LLM if needed.
@@ -164,4 +177,3 @@ A real setup running 24/7 on a headless Mac Mini with WhatsApp + iMessage, built
 ---
 
 Built by [Aman Khan](https://amanalikhan.com)
-
