@@ -9,7 +9,7 @@ OpenClaw turns Claude into a 24/7 personal AI assistant - persistent memory, too
 Open a fresh **Claude Code** terminal and paste this:
 
 ```
-Read https://raw.githubusercontent.com/ftsachev/openclaw-setup/windows-support/PROMPT.md and follow every step. Ask me which model provider I want to use when you need it.
+Read https://raw.githubusercontent.com/ftsachev/openclaw-setup/main/PROMPT.md and follow every step. Ask me which model provider I want to use when you need it.
 ```
 
 That's it. The agent will walk you through installation, provider auth, security hardening, first-run setup, and a software-dev-team multi-agent bootstrap.
@@ -164,15 +164,15 @@ The setup prompt instructs the workspace rules to treat Discord as a role-aware 
 Each default specialist can be assigned a different LLM if needed.
 
 Recommended pattern:
-- `claudia` - balanced orchestrator model
-- `assistant` - fast, cost-efficient coordination model with good summarization
-- `backend` - strong coding and systems model
-- `frontend` - strong coding model with UI/design sensitivity
-- `devops` - strong tool-using operational model
-- `devsecops` - strongest review/reasoning model available
-- `qa-review` - detail-oriented review/test model
+- `claudia` - OpenAI Codex OAuth with medium reasoning
+- `backend` - OpenAI Codex OAuth with low reasoning
+- `frontend` - OpenAI Codex OAuth with low reasoning
+- `assistant` - OpenRouter using `openrouter@nvidia/nemotron-3-super-120b-a12b:free`
+- `devops` - OpenRouter using `openrouter@nvidia/nemotron-3-super-120b-a12b:free`
+- `devsecops` - OpenRouter using `openrouter@nvidia/nemotron-3-super-120b-a12b:free`
+- `qa-review` - OpenRouter using `openrouter@nvidia/nemotron-3-super-120b-a12b:free`
 
-The setup also creates a simple management surface in the workspace so users can review and update role assignments without rewriting `AGENTS.md` from scratch.
+The setup also creates a simple management surface in the workspace so users can review and update role assignments without rewriting `AGENTS.md` from scratch. These defaults are prefilled for Codex OAuth and OpenRouter/Nemotron unless the user changes them during setup.
 
 ## Optional Role Packs
 

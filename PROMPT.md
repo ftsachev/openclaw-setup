@@ -476,13 +476,13 @@ Use this file to decide which provider/model each specialist should use. These a
 
 | Agent | Primary Role | Preferred Provider | Preferred Model | Fallback | Notes |
 |------|--------------|--------------------|-----------------|----------|-------|
-| `claudia` | orchestration | user choice | user choice | user choice | main contact; balance reasoning, coordination, and cost |
-| `assistant` | intake and support | user choice | user choice | user choice | fast summaries, note capture, reminders, and follow-up prep |
-| `backend` | APIs and services | user choice | user choice | user choice | favor strong coding and systems reliability |
-| `frontend` | UI and UX implementation | user choice | user choice | user choice | favor strong coding plus design sensitivity |
-| `devops` | deploys and operations | user choice | user choice | user choice | favor tool use, logs, and concise ops output |
-| `devsecops` | security review | user choice | user choice | user choice | favor strongest review and risk reasoning model |
-| `qa-review` | test and regression review | user choice | user choice | user choice | favor detail, consistency, and edge-case detection |
+| `claudia` | orchestration | OpenAI Codex OAuth | Codex | OpenRouter `openrouter@nvidia/nemotron-3-super-120b-a12b:free` | main contact; use medium reasoning |
+| `assistant` | intake and support | OpenRouter | `openrouter@nvidia/nemotron-3-super-120b-a12b:free` | Codex | fast summaries, note capture, reminders, and follow-up prep |
+| `backend` | APIs and services | OpenAI Codex OAuth | Codex | OpenRouter `openrouter@nvidia/nemotron-3-super-120b-a12b:free` | favor strong coding and systems reliability; use low reasoning |
+| `frontend` | UI and UX implementation | OpenAI Codex OAuth | Codex | OpenRouter `openrouter@nvidia/nemotron-3-super-120b-a12b:free` | favor strong coding plus design sensitivity; use low reasoning |
+| `devops` | deploys and operations | OpenRouter | `openrouter@nvidia/nemotron-3-super-120b-a12b:free` | Codex | favor tool use, logs, and concise ops output |
+| `devsecops` | security review | OpenRouter | `openrouter@nvidia/nemotron-3-super-120b-a12b:free` | Codex | favor strongest review and risk reasoning model |
+| `qa-review` | test and regression review | OpenRouter | `openrouter@nvidia/nemotron-3-super-120b-a12b:free` | Codex | favor detail, consistency, and edge-case detection |
 
 ## Management Rules
 - Each agent may use a different LLM if needed.
@@ -492,7 +492,7 @@ Use this file to decide which provider/model each specialist should use. These a
 - If a provider or model changes, update this file first, then any matching references in `AGENTS.md`.
 ```
 
-Ask the user whether they want one shared model across all agents or different models by role. If they do not care, keep the table with placeholders and note that it is intentionally editable.
+Use these defaults unless the user explicitly wants different assignments: `claudia`, `backend`, and `frontend` use OpenAI Codex OAuth; `claudia` uses medium reasoning; `backend` and `frontend` use low reasoning; `assistant`, `devops`, `devsecops`, and `qa-review` use OpenRouter with `openrouter@nvidia/nemotron-3-super-120b-a12b:free`. The file remains editable after setup.
 
 ### Step 16: Add the default specialist team to the workspace
 
@@ -574,13 +574,13 @@ Append this software-dev-team block to `$WORKSPACE/AGENTS.md` without overwritin
 
 ### Model Assignment Rules
 - Each specialist may use a different provider or model when the task warrants it.
-- `claudia` should prefer a balanced orchestrator model.
-- `assistant` should prefer a fast, cost-efficient coordination model with strong summarization.
-- `backend` should prefer a strong coding and systems model.
-- `frontend` should prefer a strong coding model with UI/design sensitivity.
-- `devops` should prefer a model that is reliable with tools, logs, and operational reasoning.
-- `devsecops` should prefer the strongest available review/reasoning model.
-- `qa-review` should prefer a detail-oriented model for tests, regressions, and acceptance checks.
+- `claudia` should default to OpenAI Codex OAuth with medium reasoning.
+- `backend` should default to OpenAI Codex OAuth with low reasoning.
+- `frontend` should default to OpenAI Codex OAuth with low reasoning.
+- `assistant` should default to OpenRouter with `openrouter@nvidia/nemotron-3-super-120b-a12b:free`.
+- `devops` should default to OpenRouter with `openrouter@nvidia/nemotron-3-super-120b-a12b:free`.
+- `devsecops` should default to OpenRouter with `openrouter@nvidia/nemotron-3-super-120b-a12b:free`.
+- `qa-review` should default to OpenRouter with `openrouter@nvidia/nemotron-3-super-120b-a12b:free`.
 - The source of truth for current assignments is `$WORKSPACE/AGENT_MODELS.md`.
 ```
 
