@@ -43,7 +43,7 @@ Windows support in this repo is built around **WSL2 Ubuntu** for the OpenClaw ru
 4. It connects your messaging channel (WhatsApp QR code, Telegram bot, etc.)
 5. You send your first message to start the identity/personality setup
 6. It hardens security: loopback binding, token auth, permissions, watchdog
-7. It bootstraps an engineering-core specialist team with routing and handoff rules
+7. It bootstraps an engineering-core specialist team with routing, handoff rules, and per-agent model assignments
 
 ## What It Does
 
@@ -64,8 +64,9 @@ Windows support in this repo is built around **WSL2 Ubuntu** for the OpenClaw ru
 
 ### Phase 3: Engineering Team Bootstrap
 - Defines a default six-agent engineering team: `main`, `backend`, `frontend`, `devops`, `devsecops`, `qa-review`
+- Allows each agent to use a different LLM or provider when the task warrants it
 - Adds routing rules so requests go to the right specialist instead of one generalist improvising everything
-- Adds handoff contracts, approval boundaries, and verification gates
+- Adds handoff contracts, approval boundaries, verification gates, and a lightweight management interface for role-to-model assignments
 - Documents optional add-on specialists like `marketing`, `product-design`, `data-analyst`, and `research`
 
 ## What's Inside
@@ -119,6 +120,20 @@ The default specialist set is optimized for software delivery:
 - `devops` - deploys, CI/CD, logs, incidents, health checks, and rollbacks
 - `devsecops` - auth, secrets, permissions, scanning, and security review
 - `qa-review` - test planning, regression review, acceptance checks, and release readiness
+
+## Agent Model Assignment
+
+Each default specialist can be assigned a different LLM if needed.
+
+Recommended pattern:
+- `main` - balanced orchestrator model
+- `backend` - strong coding and systems model
+- `frontend` - strong coding model with UI/design sensitivity
+- `devops` - strong tool-using operational model
+- `devsecops` - strongest review/reasoning model available
+- `qa-review` - detail-oriented review/test model
+
+The setup also creates a simple management surface in the workspace so users can review and update role assignments without rewriting `AGENTS.md` from scratch.
 
 ## Optional Role Packs
 

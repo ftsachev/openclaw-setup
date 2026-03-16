@@ -336,7 +336,7 @@ Additional platform checks:
 
 ## Phase 5: Engineering-Core Team Bootstrap
 
-### Step 15: Add the default specialist team to the workspace
+### Step 15: Create a specialist model assignment interface
 
 Find the workspace again if needed:
 
@@ -344,6 +344,36 @@ Find the workspace again if needed:
 WORKSPACE=$(openclaw config get agents.defaults.workspace)
 echo "$WORKSPACE"
 ```
+
+Create or update `$WORKSPACE/AGENT_MODELS.md` as a lightweight management interface for role-to-model assignment.
+
+This file should be easy for the user to edit later and should not require changing the larger operating manual. Append this if the file does not exist, or update the matching sections if it already exists:
+
+```markdown
+# Agent Model Assignments
+
+Use this file to decide which provider/model each specialist should use. These are defaults and can be changed any time.
+
+| Agent | Primary Role | Preferred Provider | Preferred Model | Fallback | Notes |
+|------|--------------|--------------------|-----------------|----------|-------|
+| `main` | orchestration | user choice | user choice | user choice | balance reasoning, coordination, and cost |
+| `backend` | APIs and services | user choice | user choice | user choice | favor strong coding and systems reliability |
+| `frontend` | UI and UX implementation | user choice | user choice | user choice | favor strong coding plus design sensitivity |
+| `devops` | deploys and operations | user choice | user choice | user choice | favor tool use, logs, and concise ops output |
+| `devsecops` | security review | user choice | user choice | user choice | favor strongest review and risk reasoning model |
+| `qa-review` | test and regression review | user choice | user choice | user choice | favor detail, consistency, and edge-case detection |
+
+## Management Rules
+- Each agent may use a different LLM if needed.
+- Cost-sensitive roles can use cheaper models when quality is still acceptable.
+- High-risk roles like `devsecops` and final `qa-review` should prefer the strongest reliable model available.
+- `main` is responsible for consulting this file before delegating work when model choice matters.
+- If a provider or model changes, update this file first, then any matching references in `AGENTS.md`.
+```
+
+Ask the user whether they want one shared model across all agents or different models by role. If they do not care, keep the table with placeholders and note that it is intentionally editable.
+
+### Step 16: Add the default specialist team to the workspace
 
 Append this engineering-core team block to `$WORKSPACE/AGENTS.md` without overwriting the file:
 
@@ -387,9 +417,19 @@ Append this engineering-core team block to `$WORKSPACE/AGENTS.md` without overwr
 - `devops` must verify service health and deployment state before marking work complete.
 - `devsecops` must classify findings clearly and verify that fixes address the reported risk.
 - `qa-review` must call out coverage gaps explicitly and block release if critical regressions remain.
+
+### Model Assignment Rules
+- Each specialist may use a different provider or model when the task warrants it.
+- `main` should prefer a balanced orchestrator model.
+- `backend` should prefer a strong coding and systems model.
+- `frontend` should prefer a strong coding model with UI/design sensitivity.
+- `devops` should prefer a model that is reliable with tools, logs, and operational reasoning.
+- `devsecops` should prefer the strongest available review/reasoning model.
+- `qa-review` should prefer a detail-oriented model for tests, regressions, and acceptance checks.
+- The source of truth for current assignments is `$WORKSPACE/AGENT_MODELS.md`.
 ```
 
-### Step 16: Add optional role packs
+### Step 17: Add optional role packs
 
 Append this optional section to `$WORKSPACE/AGENTS.md`:
 
@@ -405,13 +445,14 @@ Only add these specialists when the user explicitly wants them:
 - `research` for broad discovery, competitive scans, and external research.
 ```
 
-### Step 17: Validate the routing rules with examples
+### Step 18: Validate the routing and model rules with examples
 
-Before declaring setup done, confirm the team routing works for these example cases:
+Before declaring setup done, confirm the team routing and model-assignment rules work for these example cases:
 - a bug fix touching UI and API routes through `main`, then to `frontend` and `backend`
 - a deploy failure routes to `devops`
 - an auth or secret-handling concern routes to `devsecops`
 - a release confidence or regression question routes to `qa-review`
+- a user can review or change the assigned provider/model for any role by editing `$WORKSPACE/AGENT_MODELS.md`
 
 ## Debugging Quick Reference
 
