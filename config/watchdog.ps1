@@ -1,5 +1,5 @@
 param(
-    [string]$Distro = "Ubuntu",
+    [string]$Distro = "FedoraLinux",
     [string]$LinuxUser = "",
     [string]$WatchdogScript = "~/.openclaw/watchdog.sh",
     [string]$LogPath = "$env:USERPROFILE\openclaw\watchdog.log"
@@ -22,7 +22,7 @@ $linuxCommand = if ($LinuxUser) {
     "bash -lc '$WatchdogScript'"
 }
 
-Write-Log "Starting watchdog via WSL distro '$Distro'"
+Write-Log "Starting watchdog via WSL distro '$Distro' (default expects Fedora WSL unless overridden)"
 & wsl.exe -d $Distro -- bash -lc $linuxCommand
 $exitCode = $LASTEXITCODE
 
@@ -32,3 +32,4 @@ if ($exitCode -ne 0) {
 }
 
 Write-Log "Watchdog completed successfully"
+

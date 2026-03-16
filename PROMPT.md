@@ -4,7 +4,7 @@
 
 ---
 
-You are setting up OpenClaw, a personal AI assistant gateway for a software development team. Detect whether this machine is macOS, Linux, or Windows. If it is Windows, use **WSL2 Ubuntu** for the OpenClaw runtime and optionally use **Windows Task Scheduler** only to trigger the WSL watchdog script. Walk me through the setup step by step, ask for input when needed, and do not assume values you do not have.
+You are setting up OpenClaw, a personal AI assistant gateway for a software development team. Detect whether this machine is macOS, Linux, or Windows. If it is Windows, use **WSL2 Fedora** for the OpenClaw runtime when available and optionally use **Windows Task Scheduler** only to trigger the WSL watchdog script. Walk me through the setup step by step, ask for input when needed, and do not assume values you do not have.
 
 ## Phase 1: Prerequisites
 
@@ -16,13 +16,13 @@ Determine whether the host is:
 - **Windows with WSL2 already installed**
 - **Windows without WSL2**
 
-If the host is Windows and WSL2 is missing, instruct the user to install Ubuntu with WSL2 first:
+If the host is Windows, first inspect available WSL distros. If WSL2 is missing, instruct the user to install Fedora with WSL2 first:
 
 ```powershell
-wsl --install -d Ubuntu
+wsl --install -d FedoraLinux
 ```
 
-Then tell the user to restart if prompted, open the Ubuntu shell once to finish first-run setup, and continue the rest of this guide **inside WSL**.
+Then tell the user to restart if prompted, open the Fedora shell once to finish first-run setup, and continue the rest of this guide inside the selected WSL distro. If WSL is already installed, inspect the available distros with `wsl -l -v`, prefer an existing Fedora distro if one is present, and if Fedora is missing instruct the user to install Fedora rather than guessing a different distro.
 
 ### Step 2: Check prerequisites
 
@@ -33,11 +33,11 @@ On macOS/Linux/WSL, verify these exist. If anything is missing, install it:
 
 Install guidance:
 - **macOS**: use Homebrew if needed (`brew install node`)
-- **Ubuntu/WSL**: prefer NodeSource or `nvm`; do not assume the distro's default Node is new enough
+- **Fedora/WSL**: prefer `sudo dnf install -y nodejs npm curl` first; use `nvm` only if the packaged Node is unavailable or too old
 
 ### Step 3: Install OpenClaw
 
-Run inside macOS, Linux, or WSL:
+Run inside macOS, Linux, or the selected WSL distro:
 
 ```bash
 npm install -g openclaw
@@ -120,7 +120,7 @@ For other providers, do not invent flags. Inspect `openclaw onboard --help`, `op
 
 Notes:
 - `--install-daemon` only applies when a supported service manager exists.
-- On **Windows via WSL**, do not assume `systemd` is enabled. If it is not available, use the manual background start path in Step 7.
+- On **Windows via WSL**, do not assume `systemd` is enabled. If it is not available, use the manual background start path in Step 7. Use the Fedora WSL distro chosen earlier unless the user explicitly selected another distro.
 - Do not try to hand-author `~/.openclaw/openclaw.json`; let the wizard or `openclaw config set` create/update it.
 - If the user picked **OpenRouter**, preserve the exact requested model or route if OpenClaw supports setting it directly.
 
@@ -193,10 +193,10 @@ nohup openclaw gateway > /tmp/openclaw-gateway.log 2>&1 &
 sleep 3
 ```
 
-On Windows host, if you need to invoke the WSL runtime from PowerShell:
+On Windows host, if you need to invoke the selected WSL runtime from PowerShell, specify the Fedora distro you chose earlier:
 
 ```powershell
-wsl bash -lc 'nohup openclaw gateway > /tmp/openclaw-gateway.log 2>&1 & sleep 3'
+wsl -d FedoraLinux bash -lc 'nohup openclaw gateway > /tmp/openclaw-gateway.log 2>&1 & sleep 3'
 ```
 
 Verify health:
@@ -293,7 +293,7 @@ Install a user service/timer that executes `~/.openclaw/watchdog.sh` every 2 min
 #### Windows with WSL2
 1. Copy `config/watchdog.sh` into `~/.openclaw/watchdog.sh` inside WSL and mark it executable.
 2. Copy `config/watchdog.ps1` somewhere stable on Windows, for example `%USERPROFILE%\openclaw\watchdog.ps1`.
-3. Update the PowerShell script variables if the WSL distro name or Linux user differ.
+3. The PowerShell wrapper defaults to `FedoraLinux`. Update the script variables only if your Fedora distro is named differently or you need a different Linux user.
 4. Import or recreate the scheduled task using `config/openclaw-watchdog.xml`, or create the equivalent task manually.
 5. Run it at user logon every 2 minutes.
 

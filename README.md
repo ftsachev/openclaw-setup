@@ -1,6 +1,6 @@
 # OpenClaw: Hardened Software Dev Team Setup
 
-A step-by-step setup prompt you can paste into **Claude Code** (or any coding agent) to install, configure, and harden [OpenClaw](https://openclaw.ai) on macOS, Linux, or Windows via WSL2 for a software development team.
+A step-by-step setup prompt you can paste into **Claude Code** (or any coding agent) to install, configure, and harden [OpenClaw](https://openclaw.ai) on macOS, Linux, or Windows via WSL2 Fedora for a software development team.
 
 OpenClaw turns Claude into a 24/7 personal AI assistant - persistent memory, tool access, and a direct line to your messaging apps (WhatsApp, Telegram, Slack, Discord, iMessage).
 
@@ -16,7 +16,7 @@ That's it. The agent will walk you through installation, provider auth, security
 
 ## Prerequisites
 
-- **macOS, Linux, or Windows 11 with WSL2**
+- **macOS, Linux, or Windows 11 with WSL2 Fedora**
 - **Node.js 22+** and **npm**
 - **One model provider credential** for Anthropic, Codex, Gemini, OpenRouter, or another OpenClaw-supported provider
 - A phone with **WhatsApp** or a **Discord** server if you want direct team chat access (Telegram and Slack are also supported)
@@ -33,7 +33,7 @@ Common good paths:
 
 ### Windows Notes
 
-Windows support in this repo is built around **WSL2 Ubuntu** for the OpenClaw runtime, with optional **Windows Task Scheduler** to keep a watchdog running after sign-in. The gateway still binds to `127.0.0.1` inside WSL, which keeps the security model aligned with the macOS/Linux flow.
+Windows support in this repo is built around **WSL2 Fedora** for the OpenClaw runtime, with optional **Windows Task Scheduler** only to wrap the WSL watchdog after sign-in. The gateway still binds to `127.0.0.1` inside WSL, which keeps the security model aligned with the macOS/Linux flow.
 
 ## What Happens
 
@@ -213,7 +213,7 @@ These rules are intended to transfer the best parts of a strong day-to-day engin
 
 - **macOS**: full flow, including launchd templates in `config/`
 - **Linux**: full flow, including systemd timer instructions
-- **Windows**: supported through **WSL2** for the OpenClaw runtime, plus optional native Task Scheduler to invoke the WSL watchdog script
+- **Windows**: supported through **WSL2 Fedora** for the OpenClaw runtime, plus optional native Task Scheduler to invoke the WSL watchdog script
 
 ## Based On
 
