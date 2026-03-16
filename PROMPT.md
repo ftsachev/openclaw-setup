@@ -216,6 +216,17 @@ openclaw channels list
 openclaw channels logs --lines 20
 ```
 
+### Step 7b: Optional Windows host wrapper
+
+If the user wants `openclaw` callable directly from PowerShell on the Windows host, create small wrapper scripts in the Windows npm bin directory so host-shell invocations forward into the selected Fedora WSL runtime.
+
+Recommended files:
+- `%APPDATA%\npm\openclaw.cmd`
+- `%APPDATA%\npm\openclaw.ps1`
+
+Use the actual Fedora distro name in the wrapper, for example `FedoraLinux` or `FedoraLinux-43`.
+
+This wrapper is optional convenience only. Runtime, service, and onboarding work remains more reliable when run directly inside the Fedora WSL shell.
 ## Phase 3: First Contact
 
 If a messaging channel is connected, send this first message:

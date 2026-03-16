@@ -209,6 +209,17 @@ The setup prompt also teaches the workspace a few high-value operating defaults:
 - avoid reading or exposing secrets from `.env`, secret folders, or private config files
 
 These rules are intended to transfer the best parts of a strong day-to-day engineering agent workflow into the OpenClaw workspace.
+## Windows Host Wrapper
+
+If you want `openclaw` callable directly from Windows PowerShell, you can add a small wrapper in the Windows npm bin directory that forwards commands into your Fedora WSL runtime.
+
+Recommended files:
+- `%APPDATA%\npm\openclaw.cmd`
+- `%APPDATA%\npm\openclaw.ps1`
+
+Use your actual Fedora distro name in the wrapper, for example `FedoraLinux` or `FedoraLinux-43`.
+
+This is optional convenience only. For runtime work, service debugging, and onboarding flows, running `openclaw` inside the Fedora WSL shell remains the more reliable path.
 ## Platform Support
 
 - **macOS**: full flow, including launchd templates in `config/`
