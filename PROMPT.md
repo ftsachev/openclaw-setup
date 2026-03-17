@@ -100,6 +100,7 @@ The wizard is interactive, so do not blindly run a TUI if the current agent cann
 Provider-aware defaults:
 - If the user chose **Anthropic API key/setup-token**, use `openclaw onboard --non-interactive` with explicit token flags.
 - If the user chose **Codex OAuth** or **Gemini OAuth**, prefer the documented provider login flow first, then continue with OpenClaw onboarding/configuration.
+- If the user chose **Gemini OAuth**, treat it as opt-in: enable the `google-gemini-cli-auth` plugin, run the Gemini CLI login flow, then set Gemini only for the roles the user explicitly wants on Gemini.
 - If the user chose **Qwen OAuth**, enable the `qwen-portal-auth` plugin first, then run the documented Qwen login flow through `openclaw models auth login --provider qwen-portal --set-default`.
 - Treat **OpenAI Codex OAuth** as an interactive path. Do not expect `openclaw onboard --non-interactive` to complete the OAuth login for Codex.
 - If the user chose **OpenRouter**, configure OpenClaw to use OpenRouter credentials and provider settings rather than Anthropic-specific flags.
@@ -141,6 +142,21 @@ The expected default model is:
 ```text
 qwen-portal/coder-model
 ```
+
+For **Gemini**, use this sequence:
+
+```bash
+openclaw plugins enable google-gemini-cli-auth
+openclaw models auth login --provider google-gemini-cli --set-default
+```
+
+After successful Gemini login, verify:
+
+```bash
+openclaw models status --plain
+```
+
+Treat Gemini as opt-in unless the user explicitly wants it as the shared team provider. If the user wants Gemini only for selected roles, keep the current team default provider unchanged and update only those roles in `AGENT_MODELS.md`.
 
 Notes:
 - `--install-daemon` only applies when a supported service manager exists.
@@ -560,6 +576,7 @@ Use this file to decide which provider/model each specialist should use. These a
 - High-risk roles like `devsecops` and final `qa-review` should prefer the strongest reliable model available.
 - `claudia` is responsible for consulting this file before delegating work when model choice matters.
 - If a provider or model changes, update this file first, then any matching references in `AGENTS.md`.
+- Gemini is opt-in. Only assign Gemini to roles the user explicitly chooses.
 ```
 
 Use these defaults unless the user explicitly wants different assignments: `claudia`, `backend`, and `frontend` use OpenAI Codex OAuth; `claudia` uses medium reasoning; `backend` and `frontend` use low reasoning; `assistant`, `devops`, `devsecops`, and `qa-review` use OpenRouter with `openrouter@nvidia/nemotron-3-super-120b-a12b:free`. The file remains editable after setup.

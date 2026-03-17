@@ -48,6 +48,7 @@ Windows support in this repo is built around **WSL2 Fedora** for the OpenClaw ru
 
 Recent Windows/Fedora deployment lessons now built into the prompt:
 - Qwen is handled as a first-class provider through `qwen-portal-auth`
+- Gemini is supported as an explicit opt-in path through `google-gemini-cli-auth`
 - legacy configs that still say `models.providers.anthropic.api = "anthropic"` are corrected to `anthropic-messages`
 - specialist agents are created in the runtime, not just described in workspace markdown
 - new isolated agents are warmed once so they inherit the working auth profile from `main`
@@ -182,6 +183,8 @@ Recommended pattern:
 The setup also creates a simple management surface in the workspace so users can review and update role assignments without rewriting `AGENTS.md` from scratch. These defaults are prefilled for Codex OAuth and OpenRouter/Nemotron unless the user changes them during setup. In practice, the Codex OAuth step is interactive, so machine-side setup can be completed first and provider login finished afterward.
 
 If you choose Qwen as the shared team provider, the updated bootstrap now uses `qwen-portal/coder-model` for the created specialist agents by default and validates that inherited auth works for each new agent.
+
+If you choose Gemini, the updated bootstrap treats it as opt-in: it enables the Gemini auth plugin and login flow, but only assigns Gemini to roles you explicitly choose instead of silently replacing the whole team default.
 
 ## Optional Role Packs
 
