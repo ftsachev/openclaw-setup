@@ -28,6 +28,7 @@ This repo no longer assumes Anthropic-only bootstrap.
 Common good paths:
 - **Codex**: OpenAI Codex OAuth (interactive login flow)
 - **Gemini**: Gemini CLI OAuth
+- **Qwen**: Qwen Portal OAuth through the `qwen-portal-auth` plugin
 - **Anthropic**: API key or setup-token
 - **OpenRouter**: API key, including routes to models like Nemotron 120B when supported by OpenRouter
 
@@ -44,6 +45,12 @@ Windows support in this repo is built around **WSL2 Fedora** for the OpenClaw ru
 5. You send your first message to start the identity/personality setup
 6. It hardens security: loopback binding, token auth, permissions, watchdog
 7. It bootstraps a software-dev-team specialist group with routing, handoff rules, per-agent model assignments, repo knowledge files, Discord team access, and WhatsApp-safe team chat rules
+
+Recent Windows/Fedora deployment lessons now built into the prompt:
+- Qwen is handled as a first-class provider through `qwen-portal-auth`
+- legacy configs that still say `models.providers.anthropic.api = "anthropic"` are corrected to `anthropic-messages`
+- specialist agents are created in the runtime, not just described in workspace markdown
+- new isolated agents are warmed once so they inherit the working auth profile from `main`
 
 ## What It Does
 
@@ -173,6 +180,8 @@ Recommended pattern:
 - `qa-review` - OpenRouter using `openrouter@nvidia/nemotron-3-super-120b-a12b:free`
 
 The setup also creates a simple management surface in the workspace so users can review and update role assignments without rewriting `AGENTS.md` from scratch. These defaults are prefilled for Codex OAuth and OpenRouter/Nemotron unless the user changes them during setup. In practice, the Codex OAuth step is interactive, so machine-side setup can be completed first and provider login finished afterward.
+
+If you choose Qwen as the shared team provider, the updated bootstrap now uses `qwen-portal/coder-model` for the created specialist agents by default and validates that inherited auth works for each new agent.
 
 ## Optional Role Packs
 

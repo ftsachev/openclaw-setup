@@ -64,6 +64,7 @@ Ask the user which provider they want to use. Good first-class options are:
 - **Anthropic** using an API key or setup-token
 - **Codex** using OpenAI Codex OAuth
 - **Gemini** using Gemini CLI OAuth
+- **Qwen** using Qwen Portal OAuth
 - **OpenRouter** using an API key
 
 If the user explicitly wants a specific routed model through OpenRouter, accept that too, for example **Nemotron 120B**, as long as OpenRouter currently offers it.
@@ -88,7 +89,7 @@ echo 'export OPENROUTER_API_KEY="PASTE_KEY_HERE"' >> "$SHELL_PROFILE"
 source "$SHELL_PROFILE"
 ```
 
-For **Codex OAuth** and **Gemini OAuth**, prefer the provider's normal login flow rather than forcing an API-key path.
+For **Codex OAuth**, **Gemini OAuth**, and **Qwen OAuth**, prefer the provider's normal login flow rather than forcing an API-key path.
 
 ## Phase 2: Install and Connect
 
@@ -99,6 +100,7 @@ The wizard is interactive, so do not blindly run a TUI if the current agent cann
 Provider-aware defaults:
 - If the user chose **Anthropic API key/setup-token**, use `openclaw onboard --non-interactive` with explicit token flags.
 - If the user chose **Codex OAuth** or **Gemini OAuth**, prefer the documented provider login flow first, then continue with OpenClaw onboarding/configuration.
+- If the user chose **Qwen OAuth**, enable the `qwen-portal-auth` plugin first, then run the documented Qwen login flow through `openclaw models auth login --provider qwen-portal --set-default`.
 - Treat **OpenAI Codex OAuth** as an interactive path. Do not expect `openclaw onboard --non-interactive` to complete the OAuth login for Codex.
 - If the user chose **OpenRouter**, configure OpenClaw to use OpenRouter credentials and provider settings rather than Anthropic-specific flags.
 
@@ -121,11 +123,31 @@ openclaw onboard \
 
 For other providers, do not invent flags. Inspect `openclaw onboard --help`, `openclaw config --help`, and the installed docs/help output, then choose the matching supported auth flow. For Codex, use the current OpenClaw auth choice name supported by the installed CLI, such as `openai-codex`, rather than deprecated aliases.
 
+For **Qwen**, use this sequence:
+
+```bash
+openclaw plugins enable qwen-portal-auth
+openclaw models auth login --provider qwen-portal --set-default
+```
+
+After successful Qwen login, verify:
+
+```bash
+openclaw models status --plain
+```
+
+The expected default model is:
+
+```text
+qwen-portal/coder-model
+```
+
 Notes:
 - `--install-daemon` only applies when a supported service manager exists.
 - On **Windows via WSL**, do not assume `systemd` is enabled. If it is not available, use the manual background start path in Step 7. Use the Fedora WSL distro chosen earlier unless the user explicitly selected another distro.
 - Do not try to hand-author `~/.openclaw/openclaw.json`; let the wizard or `openclaw config set` create/update it.
 - If the user picked **OpenRouter**, preserve the exact requested model or route if OpenClaw supports setting it directly.
+- If an older config contains `models.providers.anthropic.api: "anthropic"` and OpenClaw reports that as invalid, update it to `anthropic-messages` before continuing.
 
 ### Step 6: Connect a messaging channel
 
@@ -543,6 +565,57 @@ Use this file to decide which provider/model each specialist should use. These a
 Use these defaults unless the user explicitly wants different assignments: `claudia`, `backend`, and `frontend` use OpenAI Codex OAuth; `claudia` uses medium reasoning; `backend` and `frontend` use low reasoning; `assistant`, `devops`, `devsecops`, and `qa-review` use OpenRouter with `openrouter@nvidia/nemotron-3-super-120b-a12b:free`. The file remains editable after setup.
 
 ### Step 16: Add the default specialist team to the workspace
+
+After updating the workspace rules, actually create the specialist agents in OpenClaw so the team exists in the runtime, not just in markdown.
+
+If the user wants one shared provider for the whole team, use that provider for every specialist at creation time. If the user specifically chose **Qwen for the whole team**, use `qwen-portal/coder-model` for every specialist unless they later override it in `AGENT_MODELS.md`.
+
+Example runtime creation sequence:
+
+```bash
+mkdir -p ~/.openclaw/workspaces/assistant \
+         ~/.openclaw/workspaces/backend \
+         ~/.openclaw/workspaces/frontend \
+         ~/.openclaw/workspaces/devops \
+         ~/.openclaw/workspaces/devsecops \
+         ~/.openclaw/workspaces/qa-review
+
+openclaw agents add assistant --workspace ~/.openclaw/workspaces/assistant --model qwen-portal/coder-model
+openclaw agents add backend --workspace ~/.openclaw/workspaces/backend --model qwen-portal/coder-model
+openclaw agents add frontend --workspace ~/.openclaw/workspaces/frontend --model qwen-portal/coder-model
+openclaw agents add devops --workspace ~/.openclaw/workspaces/devops --model qwen-portal/coder-model
+openclaw agents add devsecops --workspace ~/.openclaw/workspaces/devsecops --model qwen-portal/coder-model
+openclaw agents add qa-review --workspace ~/.openclaw/workspaces/qa-review --model qwen-portal/coder-model
+```
+
+Then set role identities so the runtime reflects the intended team:
+
+```bash
+openclaw agents set-identity --agent main --name "Claudia" --emoji "🧭" --theme "AI orchestrator and team lead"
+openclaw agents set-identity --agent assistant --name "Assistant" --emoji "📋" --theme "ops support and coordination"
+openclaw agents set-identity --agent backend --name "Backend" --emoji "🛠️" --theme "backend services and integrations"
+openclaw agents set-identity --agent frontend --name "Frontend" --emoji "🖥️" --theme "frontend implementation and ux"
+openclaw agents set-identity --agent devops --name "DevOps" --emoji "🚦" --theme "deploys infra ci and runtime ops"
+openclaw agents set-identity --agent devsecops --name "DevSecOps" --emoji "🔐" --theme "security review and auth secrets"
+openclaw agents set-identity --agent qa-review --name "QA Review" --emoji "🧪" --theme "testing regression and release review"
+```
+
+Important runtime lesson:
+- newly created isolated agents may not materialize their inherited auth profile until their first real turn
+- after creating each specialist, run one short local turn to force auth-profile inheritance from `main`
+
+Warm-up example:
+
+```bash
+openclaw agent --local --agent assistant --message "Say only: assistant ready."
+openclaw agent --local --agent backend --message "Say only: backend ready."
+openclaw agent --local --agent frontend --message "Say only: frontend ready."
+openclaw agent --local --agent devops --message "Say only: devops ready."
+openclaw agent --local --agent devsecops --message "Say only: devsecops ready."
+openclaw agent --local --agent qa-review --message "Say only: qa-review ready."
+```
+
+If OpenClaw prints that an agent inherited auth profiles from `main`, that is expected and confirms the specialist can use the same provider successfully.
 
 Append this software-dev-team block to `$WORKSPACE/AGENTS.md` without overwriting the file:
 
