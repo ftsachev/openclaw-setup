@@ -216,6 +216,39 @@ openclaw channels list
 openclaw channels logs --lines 20
 ```
 
+On Windows with WSL, verify reachability from both sides:
+
+Inside Fedora WSL:
+
+```bash
+curl -I --max-time 10 http://127.0.0.1:18789/
+```
+
+From Windows PowerShell:
+
+```powershell
+Invoke-WebRequest -UseBasicParsing http://127.0.0.1:18789/ -TimeoutSec 10 | Select-Object -ExpandProperty StatusCode
+```
+
+If Fedora WSL can reach `127.0.0.1:18789` but Windows cannot, treat that as broken WSL localhost forwarding. In that case:
+- keep the gateway bound to WSL loopback
+- detect the current WSL IP
+- add an elevated Windows `netsh interface portproxy` rule from `127.0.0.1:18789` to the WSL IP on port `18789`
+- do the same for `127.0.0.1:18791` if the browser-control sidecar is enabled
+
+Example from an elevated Windows PowerShell prompt:
+
+```powershell
+$Distro = "FedoraLinux-43"
+$WslIp = (wsl -d $Distro bash -lc "/usr/sbin/ip -4 addr show eth0 | /usr/bin/sed -n 's/.*inet \([0-9.]*\)\/.*/\1/p' | /usr/bin/head -n 1").Trim()
+netsh interface portproxy delete v4tov4 listenaddress=127.0.0.1 listenport=18789
+netsh interface portproxy add v4tov4 listenaddress=127.0.0.1 listenport=18789 connectaddress=$WslIp connectport=18789
+netsh interface portproxy delete v4tov4 listenaddress=127.0.0.1 listenport=18791
+netsh interface portproxy add v4tov4 listenaddress=127.0.0.1 listenport=18791 connectaddress=$WslIp connectport=18791
+```
+
+If the current Fedora WSL install uses only the `root` user, do not assume `systemctl --user` is a stable long-lived Windows-host strategy. Prefer a Windows-managed launcher and a watchdog that refreshes the `portproxy` mapping when the WSL IP changes.
+
 ### Step 7b: Optional Windows host wrapper
 
 If the user wants `openclaw` callable directly from PowerShell on the Windows host, create small wrapper scripts in the Windows npm bin directory so host-shell invocations forward into the selected Fedora WSL runtime.
@@ -308,8 +341,9 @@ Install a user service/timer that executes `~/.openclaw/watchdog.sh` every 2 min
 1. Copy `config/watchdog.sh` into `~/.openclaw/watchdog.sh` inside WSL and mark it executable.
 2. Copy `config/watchdog.ps1` somewhere stable on Windows, for example `%USERPROFILE%\openclaw\watchdog.ps1`.
 3. The PowerShell wrapper auto-detects the first Fedora WSL distro when `Distro` is left blank. Set `Distro` explicitly only if you need a specific Fedora distro name or a different Linux user.
-4. Import or recreate the scheduled task using `config/openclaw-watchdog.xml`, or create the equivalent task manually.
-5. Run it at user logon every 2 minutes.
+4. If Windows cannot reach `http://127.0.0.1:18789/` while WSL can, run the Task Scheduler wrapper elevated so it can refresh the Windows `portproxy` mapping to the current WSL IP before invoking the WSL watchdog.
+5. Import or recreate the scheduled task using `config/openclaw-watchdog.xml`, or create the equivalent task manually.
+6. Run it at user logon every 2 minutes.
 
 Example registration from an elevated PowerShell prompt after editing the XML path placeholders:
 
@@ -643,4 +677,5 @@ For Windows host scheduled-task debugging:
 Get-ScheduledTask -TaskName OpenClawWatchdog
 Get-Content $env:USERPROFILE\openclaw\watchdog.log -Tail 50
 ```
+
 

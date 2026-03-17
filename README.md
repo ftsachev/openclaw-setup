@@ -33,7 +33,7 @@ Common good paths:
 
 ### Windows Notes
 
-Windows support in this repo is built around **WSL2 Fedora** for the OpenClaw runtime, with optional **Windows Task Scheduler** only to wrap the WSL watchdog after sign-in. Fedora distro names may vary in practice, such as `FedoraLinux` or `FedoraLinux-43`, so the helper script should auto-detect the installed Fedora distro by default. The gateway still binds to `127.0.0.1` inside WSL, which keeps the security model aligned with the macOS/Linux flow.
+Windows support in this repo is built around **WSL2 Fedora** for the OpenClaw runtime, with optional **Windows Task Scheduler** to wrap the WSL watchdog after sign-in and refresh Windows-to-WSL localhost reachability when needed. Fedora distro names may vary in practice, such as `FedoraLinux` or `FedoraLinux-43`, so the helper script should auto-detect the installed Fedora distro by default. The gateway still binds to `127.0.0.1` inside WSL, which keeps the security model aligned with the macOS/Linux flow. If Windows cannot reach `http://127.0.0.1:18789/` while Fedora WSL can, the supported fallback is an elevated Windows `netsh interface portproxy` mapping to the current WSL IP.
 
 ## What Happens
 
@@ -58,7 +58,7 @@ Windows support in this repo is built around **WSL2 Fedora** for the OpenClaw ru
 - Enforces loopback-only gateway binding
 - Sets up token authentication
 - Configures group chat safety (allowlist + require-mention)
-- Installs a watchdog service for automatic crash recovery
+- Installs a watchdog service for automatic crash recovery and refreshes Windows `portproxy` mappings when WSL localhost forwarding is broken
 - Runs a full security audit
 - Verifies everything works end-to-end
 
@@ -237,4 +237,5 @@ A real setup running 24/7 on a headless Mac Mini with WhatsApp + iMessage, built
 ---
 
 Built by [Aman Khan](https://amanalikhan.com)
+
 
