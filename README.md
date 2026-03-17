@@ -14,6 +14,11 @@ Read https://raw.githubusercontent.com/ftsachev/openclaw-setup/main/PROMPT.md an
 
 That's it. The agent will walk you through installation, provider auth, security hardening, first-run setup, and a software-dev-team multi-agent bootstrap.
 
+The updated prompt now asks through a short setup menu which provider/model you want for:
+- `Claudia` / main agent
+- the specialist agents by default
+- optional per-role overrides when you want a mixed team
+
 ## Prerequisites
 
 - **macOS, Linux, or Windows 11 with WSL2 Fedora**
@@ -170,6 +175,18 @@ The setup prompt instructs the workspace rules to treat Discord as a role-aware 
 ## Agent Model Assignment
 
 Each default specialist can be assigned a different LLM if needed.
+
+During setup, the bootstrap now asks this interactively instead of silently applying defaults. The intended flow is:
+- choose one shortlist option for `Claudia`
+- choose one shortlist option for the specialist default
+- optionally override individual specialists
+
+Shortlisted setup choices:
+- `Codex`
+- `Qwen`
+- `Gemini`
+- `OpenRouter Nemotron`
+- `same as specialist default` for per-role overrides
 
 Recommended pattern:
 - `claudia` - OpenAI Codex OAuth with medium reasoning

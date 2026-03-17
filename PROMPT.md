@@ -60,7 +60,43 @@ If that fixes it, persist the PATH update in the shell profile the user is actua
 
 Do **not** assume Anthropic, OAuth, or API-key auth.
 
-Ask the user which provider they want to use. Good first-class options are:
+Ask the user which provider they want to use through a short interactive menu, not an open-ended prompt.
+
+Use this setup menu format:
+
+```text
+Choose the provider/model plan for this setup:
+
+1. Codex for Claudia + backend/frontend, OpenRouter Nemotron for the rest
+2. Qwen for all agents
+3. Gemini only for selected roles (opt-in)
+4. OpenRouter for all agents
+5. Custom split by role
+```
+
+Then ask two follow-ups:
+
+```text
+A. Which provider/model should Claudia (main agent) use?
+B. Which provider/model should the specialist agents use by default?
+```
+
+If the user picks `Custom split by role`, ask for a role-by-role shortlist only for these roles:
+- `assistant`
+- `backend`
+- `frontend`
+- `devops`
+- `devsecops`
+- `qa-review`
+
+For each role, offer this shortlist instead of free-form guessing:
+- `Codex`
+- `Qwen`
+- `Gemini`
+- `OpenRouter Nemotron`
+- `same as specialist default`
+
+Good first-class options are:
 - **Anthropic** using an API key or setup-token
 - **Codex** using OpenAI Codex OAuth
 - **Gemini** using Gemini CLI OAuth
@@ -90,6 +126,8 @@ source "$SHELL_PROFILE"
 ```
 
 For **Codex OAuth**, **Gemini OAuth**, and **Qwen OAuth**, prefer the provider's normal login flow rather than forcing an API-key path.
+
+During setup, record the user's selections immediately in working notes and later write them into `$WORKSPACE/AGENT_MODELS.md`. Do not silently replace the user's chosen provider/model split with repo defaults.
 
 ## Phase 2: Install and Connect
 
@@ -553,6 +591,31 @@ echo "$WORKSPACE"
 
 Create or update `$WORKSPACE/AGENT_MODELS.md` as a lightweight management interface for role-to-model assignment.
 
+Before writing the file, ask the user to confirm the role mapping through a short interactive shortlist.
+
+Use this confirmation menu:
+
+```text
+Provider/model assignment:
+
+- Claudia (main):
+  1. Codex
+  2. Qwen
+  3. Gemini
+  4. OpenRouter Nemotron
+
+- Specialist default:
+  1. Codex
+  2. Qwen
+  3. Gemini
+  4. OpenRouter Nemotron
+
+- Optional per-role overrides:
+  assistant / backend / frontend / devops / devsecops / qa-review
+```
+
+If the user does not want per-role overrides, keep one specialist default for all subagents. If the user does want overrides, only ask for the roles they want to override.
+
 This file should be easy for the user to edit later and should not require changing the larger operating manual. Append this if the file does not exist, or update the matching sections if it already exists:
 
 ```markdown
@@ -579,13 +642,15 @@ Use this file to decide which provider/model each specialist should use. These a
 - Gemini is opt-in. Only assign Gemini to roles the user explicitly chooses.
 ```
 
-Use these defaults unless the user explicitly wants different assignments: `claudia`, `backend`, and `frontend` use OpenAI Codex OAuth; `claudia` uses medium reasoning; `backend` and `frontend` use low reasoning; `assistant`, `devops`, `devsecops`, and `qa-review` use OpenRouter with `openrouter@nvidia/nemotron-3-super-120b-a12b:free`. The file remains editable after setup.
+If the user gives no preference, use these defaults: `claudia`, `backend`, and `frontend` use OpenAI Codex OAuth; `claudia` uses medium reasoning; `backend` and `frontend` use low reasoning; `assistant`, `devops`, `devsecops`, and `qa-review` use OpenRouter with `openrouter@nvidia/nemotron-3-super-120b-a12b:free`. The file remains editable after setup.
 
 ### Step 16: Add the default specialist team to the workspace
 
 After updating the workspace rules, actually create the specialist agents in OpenClaw so the team exists in the runtime, not just in markdown.
 
 If the user wants one shared provider for the whole team, use that provider for every specialist at creation time. If the user specifically chose **Qwen for the whole team**, use `qwen-portal/coder-model` for every specialist unless they later override it in `AGENT_MODELS.md`.
+
+If the user chose different providers for `Claudia` and the specialists, create `main` with the Claudia choice and create the specialist agents with the specialist default. If the user chose per-role overrides, apply those overrides after agent creation and record them in `AGENT_MODELS.md`.
 
 Example runtime creation sequence:
 
