@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-16"?>
+<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+    <RegistrationInfo>
+        <Description>OpenClaw Watchdog - monitors gateway health, restarts if degraded</Description>
+    </RegistrationInfo>
+    <Triggers>
+        <TimeTrigger>
+            <Repetition>
+                <Interval>PT2M</Interval>
+                <StopAtDurationEnd>false</StopAtDurationEnd>
+            </Repetition>
+            <StartBoundary>2026-01-01T00:00:00</StartBoundary>
+            <Enabled>true</Enabled>
+        </TimeTrigger>
+        <BootTrigger>
+            <Enabled>true</Enabled>
+        </BootTrigger>
+        <LogonTrigger>
+            <Enabled>true</Enabled>
+        </LogonTrigger>
+    </Triggers>
+    <Principals>
+        <Principal id="Author">
+            <LogonType>InteractiveToken</LogonType>
+            <RunLevel>LeastPrivilege</RunLevel>
+        </Principal>
+    </Principals>
+    <Settings>
+        <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+        <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+        <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+        <AllowHardTerminate>true</AllowHardTerminate>
+        <StartWhenAvailable>true</StartWhenAvailable>
+        <RunOnlyIfNetworkAvailable>false</RunOnlyIfNetworkAvailable>
+        <IdleSettings>
+            <StopOnIdleEnd>true</StopOnIdleEnd>
+            <RestartOnIdle>false</RestartOnIdle>
+        </IdleSettings>
+        <AllowStartOnDemand>true</AllowStartOnDemand>
+        <Enabled>true</Enabled>
+        <Hidden>false</Hidden>
+        <RunOnlyIfIdle>false</RunOnlyIfIdle>
+        <WakeToRun>false</WakeToRun>
+        <ExecutionTimeLimit>PT1M</ExecutionTimeLimit>
+        <Priority>7</Priority>
+    </Settings>
+    <Actions Context="Author">
+        <Exec>
+            <Command>powershell.exe</Command>
+            <Arguments>-ExecutionPolicy Bypass -File "%USERPROFILE%\dev\openclaw-setup\config\watchdog.ps1"</Arguments>
+            <WorkingDirectory>%USERPROFILE%\dev\openclaw-setup\config</WorkingDirectory>
+        </Exec>
+    </Actions>
+</Task>

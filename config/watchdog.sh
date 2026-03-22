@@ -2,6 +2,7 @@
 # OpenClaw Gateway Watchdog
 # Checks gateway and channel health, and restarts if degraded.
 # Designed to run on macOS, Linux, and WSL.
+# Version: 2.0 (Smart notifications with Telegram support)
 
 set -u
 
@@ -20,7 +21,11 @@ RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp/openclaw}"
 LOG_FILE="$RUNTIME_DIR/watchdog.log"
 LOCK_FILE="$RUNTIME_DIR/watchdog.lock"
 NOTIFY_PHONE="${NOTIFY_PHONE:-}"
+NOTIFY_TELEGRAM="${NOTIFY_TELEGRAM:-}"
+TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-}"
+TELEGRAM_CHAT_ID="${TELEGRAM_CHAT_ID:-}"
 STALE_THRESHOLD_SECONDS="${STALE_THRESHOLD_SECONDS:-7200}"
+NOTIFY_COOLDOWN_MIN="${NOTIFY_COOLDOWN_MIN:-15}"
 
 mkdir -p "$RUNTIME_DIR"
 
@@ -54,6 +59,79 @@ release_lock() {
 trap release_lock EXIT
 rotate_log
 acquire_lock
+
+# ============================================================================
+# Telegram Notification Function
+# ============================================================================
+send_telegram() {
+    local message="$1"
+    local level="${2:-info}"
+    
+    # Skip if not configured
+    [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ] && return 0
+    
+    # Check cooldown
+    local cooldown_file="$RUNTIME_DIR/telegram_cooldown"
+    if [ -f "$cooldown_file" ]; then
+        local last_sent now elapsed
+        last_sent=$(cat "$cooldown_file" 2>/dev/null || echo 0)
+        now=$(date +%s)
+        elapsed=$(( (now - last_sent) / 60 ))
+        
+        if [ "$elapsed" -lt "$NOTIFY_COOLDOWN_MIN" ]; then
+            log "Telegram notification skipped (cooldown: ${elapsed}m < ${NOTIFY_COOLDOWN_MIN}m)"
+            return 0
+        fi
+    fi
+    
+    local emoji
+    case "$level" in
+        critical) emoji="🚨" ;;
+        error)    emoji="❌" ;;
+        warn)     emoji="⚠️" ;;
+        success)  emoji="✅" ;;
+        *)        emoji="ℹ️" ;;
+    esac
+    
+    local formatted_msg="${emoji} OpenClaw Watchdog
+
+${message}
+
+_Time: $(date '+%Y-%m-%d %H:%M')_"
+    
+    local uri="https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage"
+    
+    if command -v curl >/dev/null 2>&1; then
+        curl -s -X POST "$uri" \
+            -d "chat_id=${TELEGRAM_CHAT_ID}" \
+            -d "text=${formatted_msg}" \
+            -d "parse_mode=Markdown" \
+            >/dev/null 2>&1 || log "Telegram send failed"
+    else
+        # Fallback to openclaw if available
+        $CLI message send --channel telegram --to "$TELEGRAM_CHAT_ID" --message "$message" >/dev/null 2>&1 || \
+            log "Telegram send failed"
+    fi
+    
+    # Update cooldown
+    date +%s > "$cooldown_file"
+    log "Telegram notification sent: $level"
+}
+
+send_notification() {
+    local message="$1"
+    
+    # Send via WhatsApp if configured
+    if [ -n "$NOTIFY_PHONE" ]; then
+        $CLI message send --channel whatsapp --to "$NOTIFY_PHONE" --message "$message" >/dev/null 2>&1 || \
+            log "Failed to send WhatsApp notification"
+    fi
+    
+    # Send via Telegram if configured
+    if [ -n "$NOTIFY_TELEGRAM" ] || [ -n "$TELEGRAM_CHAT_ID" ]; then
+        send_telegram "$message" "info"
+    fi
+}
 
 check_channel_health() {
     local profile_flag="$1"

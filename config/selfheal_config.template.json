@@ -1,0 +1,21 @@
+# OpenClaw Self-Heal Configuration
+# Copy this file to selfheal_config.json and customize as needed
+
+{
+  "maxAttempts": 3,
+  "retryDelaySec": 60,
+  "circuitBreakThreshold": 5,
+  "consecutiveErrorLimit": 3,
+  "notificationCooldownMin": 15,
+  "botToken": "YOUR_BOT_TOKEN_HERE",
+  "chatId": "YOUR_CHAT_ID_HERE"
+}
+
+# Configuration Options:
+# - maxAttempts: Number of times to try starting the gateway before giving up
+# - retryDelaySec: Seconds to wait between retry attempts
+# - circuitBreakThreshold: Consecutive failures before disabling the cron job
+# - consecutiveErrorLimit: Deprecated, use circuitBreakThreshold
+# - notificationCooldownMin: Minimum minutes between Telegram notifications
+# - botToken: Telegram bot token (from @BotFather)
+# - chatId: Your Telegram user/chat ID for notifications

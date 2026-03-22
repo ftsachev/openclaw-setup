@@ -2,7 +2,8 @@ param(
     [string]$Distro = "",
     [string]$LinuxUser = "",
     [string]$WatchdogScript = "~/.openclaw/watchdog.sh",
-    [string]$LogPath = "$env:USERPROFILE\openclaw\watchdog.log"
+    [string]$LogPath = "$env:USERPROFILE\openclaw\watchdog.log",
+    [switch]$NotifyOnFailure = $false
 )
 
 $logDir = Split-Path -Parent $LogPath
@@ -10,10 +11,58 @@ if ($logDir) {
     New-Item -ItemType Directory -Force -Path $logDir | Out-Null
 }
 
+# Telegram configuration (optional - for direct notifications)
+$TelegramConfig = @{
+    BotToken = ""  # Set your bot token or leave empty to use OpenClaw's config
+    ChatId   = ""  # Set your chat ID or leave empty
+}
+
 function Write-Log {
     param([string]$Message)
     $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
     Add-Content -Path $LogPath -Value "[$timestamp] $Message"
+}
+
+function Send-TelegramNotification {
+    param(
+        [string]$Message,
+        [string]$Level = "info"
+    )
+    
+    if (-not $NotifyOnFailure) {
+        return
+    }
+    
+    # Try to get config from OpenClaw if botToken not set
+    $botToken = $TelegramConfig.BotToken
+    $chatId = $TelegramConfig.ChatId
+    
+    if (-not $botToken -or -not $chatId) {
+        Write-Log "Telegram not configured for direct notifications"
+        return
+    }
+    
+    $emoji = switch ($Level) {
+        "critical" { "🚨" }
+        "error"    { "❌" }
+        "warn"     { "⚠️" }
+        "success"  { "✅" }
+        default    { "ℹ️" }
+    }
+    
+    $uri = "https://api.telegram.org/bot$botToken/sendMessage"
+    $body = @{
+        chat_id = $chatId
+        text = "$emoji OpenClaw Watchdog`n`n$Message`n`n_Time: $(Get-Date -Format 'yyyy-MM-dd HH:mm')_"
+        parse_mode = "Markdown"
+    }
+    
+    try {
+        Invoke-RestMethod -Method Post -Uri $uri -Body $body -ErrorAction Stop | Out-Null
+        Write-Log "Telegram notification sent: $Level"
+    } catch {
+        Write-Log "Telegram send failed: $_"
+    }
 }
 
 function Resolve-Distro {
@@ -80,11 +129,13 @@ $linuxCommand = if ($LinuxUser) {
 
 Write-Log "Starting watchdog via WSL distro '$ResolvedDistro' (Fedora auto-detect unless overridden)"
 Ensure-PortProxy -TargetDistro $ResolvedDistro
+
 & wsl.exe -d $ResolvedDistro -- bash -lc $linuxCommand
 $exitCode = $LASTEXITCODE
 
 if ($exitCode -ne 0) {
     Write-Log "Watchdog exited with code $exitCode"
+    Send-TelegramNotification -Message "Watchdog detected gateway issue (exit code: $exitCode). Check logs at $LogPath" -Level "error"
     exit $exitCode
 }
 
