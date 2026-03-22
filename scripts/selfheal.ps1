@@ -1,21 +1,22 @@
 ﻿# Self-heal script for OpenClaw gateway on port 18789
-# Version: 2.0 (Smart healing with intelligent notifications)
+# Version: 3.0 (Adaptive healing with root cause analysis and predictive detection)
 #
-# Features:
-# - Health-check endpoint (http://localhost:18789/health)
-# - Direct gateway execution with permission fixing
-# - Retry-backoff with exponential delay
-# - Comprehensive logging to file
-# - Circuit-breaker (disable cron after N consecutive failures)
-# - Uses openclaw health --json for richer status
-# - Validates doctor output
-# - Smart Telegram notifications (only on state changes)
-# - Configurable thresholds via JSON config
-# - Graceful degradation when Telegram is unavailable
+# Smart Features:
+# - Adaptive healing that learns from past failures
+# - Root cause analysis (OOM, crash, network, disk, Node.js)
+# - Predictive degradation detection (response time trends)
+# - Health metrics tracking with history
+# - Escalation logic based on failure type
+# - Dependency checks before healing attempts
+# - Exponential backoff with smart retry delays
+# - Comprehensive logging with structured JSON
+# - Circuit-breaker with auto-recovery
+# - Smart Telegram notifications with escalation
 
 param(
     [switch]$Verbose = $false,
-    [switch]$NoNotify = $false
+    [switch]$NoNotify = $false,
+    [switch]$ForceRun = $false
 )
 
 # ============================================================================
@@ -25,20 +26,32 @@ $port = 18789
 $healthUrl = "http://localhost:${port}/health"
 $baseDir = "C:\Users\filip\.openclaw"
 $logFile = Join-Path $baseDir "workspace\selfheal.log"
+$metricsFile = Join-Path $baseDir "workspace\selfheal_metrics.json"
 $stateFile = Join-Path $baseDir "workspace\selfheal_state.json"
 $configFile = Join-Path $baseDir "workspace\selfheal_config.json"
+$historyFile = Join-Path $baseDir "workspace\selfheal_history.json"
 $devicesDir = Join-Path $baseDir "devices"
 $pairedJson = Join-Path $devicesDir "paired.json"
 
 # Defaults (can be overridden by config file)
 $defaultConfig = @{
     maxAttempts = 3
-    retryDelaySec = 60
+    initialRetryDelaySec = 30
+    maxRetryDelaySec = 300
     circuitBreakThreshold = 5
-    consecutiveErrorLimit = 3
+    autoRecoverCircuitBreakHours = 4
     notificationCooldownMin = 15
     botToken = "8629930214:AAEtuRiIAc665EXfslOY0538gmPQwGdPM68"
     chatId = "8537945694"
+    # Predictive thresholds
+    healthResponseTimeWarnMs = 1000
+    healthResponseTimeCritMs = 5000
+    # Dependency checks
+    minFreeDiskMB = 100
+    checkNodeHealth = $true
+    # Escalation
+    escalateAfterFailures = 3
+    escalationChatId = ""  # Optional: different chat for critical alerts
 }
 
 # ============================================================================
@@ -47,21 +60,40 @@ $defaultConfig = @{
 function Write-Log {
     param(
         [string]$msg,
-        [string]$level = "INFO"
+        [string]$level = "INFO",
+        [hashtable]$data = $null
     )
     $ts = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss.fff')
     $logLine = "[$ts] [$level] $msg"
     
+    # Structured JSON log for metrics
+    if ($data) {
+        $jsonLog = @{
+            timestamp = $ts
+            level = $level
+            message = $msg
+            data = $data
+        } | ConvertTo-Json -Compress
+    }
+    
     # Write to file
     try {
-        $logLine | Out-File -FilePath $logFile -Append -Encoding utf8
+        if ($data) {
+            $jsonLog | Out-File -FilePath $logFile -Append -Encoding utf8
+        } else {
+            $logLine | Out-File -FilePath $logFile -Append -Encoding utf8
+        }
     } catch {
         # Silent fail on log write error
     }
     
     # Write to stdout for cron capture
-    if ($Verbose -or $level -eq "ERROR" -or $level -eq "WARN") {
-        Write-Host $logLine
+    if ($Verbose -or $level -eq "ERROR" -or $level -eq "WARN" -or $level -eq "CRITICAL") {
+        if ($data) {
+            Write-Host "$logLine | $jsonLog"
+        } else {
+            Write-Host $logLine
+        }
     }
 }
 
@@ -79,7 +111,6 @@ function Get-Config {
     if (Test-Path $configFile) {
         try {
             $config = Get-Content $configFile -Raw | ConvertFrom-Json
-            # Merge with defaults for any missing keys
             foreach ($key in $defaultConfig.Keys) {
                 if (-not $config.PSObject.Properties[$key]) {
                     $config.$key = $defaultConfig[$key]
@@ -91,9 +122,8 @@ function Get-Config {
             return $defaultConfig
         }
     } else {
-        # Create default config file
         try {
-            $defaultConfig | ConvertTo-Json -Depth 3 | Set-Content $configFile -Encoding utf8
+            $defaultConfig | ConvertTo-Json -Depth 5 | Set-Content $configFile -Encoding utf8
             Write-Log "Created default config file"
         } catch {
             Write-Log "Could not create config file, using defaults" "WARN"
@@ -103,12 +133,60 @@ function Get-Config {
 }
 
 # ============================================================================
-# State Management
+# State Management (Enhanced with learning)
 # ============================================================================
+function Get-DefaultState {
+    return @{
+        failures = 0
+        consecutiveSuccesses = 0
+        lastSuccessAt = $null
+        lastFailureAt = $null
+        lastNotificationAt = $null
+        totalRuns = 0
+        totalHeals = 0
+        gatewayPid = $null
+        healthStatus = "unknown"
+        lastFailureReason = $null
+        lastHealMethod = $null
+        circuitBreakUntil = $null
+        escalationLevel = 0
+        adaptiveRetryDelaySec = 30
+        failurePatterns = @{
+            "oom" = 0
+            "crash" = 0
+            "network" = 0
+            "disk" = 0
+            "nodejs" = 0
+            "unknown" = 0
+        }
+    }
+}
+
 function Get-State {
     if (Test-Path $stateFile) {
         try {
-            return Get-Content $stateFile -Raw | ConvertFrom-Json
+            $loadedState = Get-Content $stateFile -Raw | ConvertFrom-Json
+            $defaultState = Get-DefaultState
+            
+            # Merge with defaults for any missing keys (v2->v3 migration)
+            foreach ($key in $defaultState.Keys) {
+                if (-not $loadedState.PSObject.Properties[$key]) {
+                    $loadedState.$key = $defaultState[$key]
+                }
+            }
+            
+            # Ensure failurePatterns exists and has all keys
+            if (-not $loadedState.failurePatterns) {
+                $loadedState.failurePatterns = $defaultState.failurePatterns
+            } else {
+                foreach ($key in $defaultState.failurePatterns.Keys) {
+                    if (-not $loadedState.failurePatterns.$key) {
+                        $loadedState.failurePatterns.$key = 0
+                    }
+                }
+            }
+            
+            return $loadedState
         } catch {
             Write-Log "Error reading state file, resetting" "WARN"
             return Get-DefaultState
@@ -118,23 +196,10 @@ function Get-State {
     }
 }
 
-function Get-DefaultState {
-    return @{
-        failures = 0
-        lastSuccessAt = $null
-        lastFailureAt = $null
-        lastNotificationAt = $null
-        totalRuns = 0
-        totalHeals = 0
-        gatewayPid = $null
-        healthStatus = "unknown"
-    }
-}
-
 function Set-State {
     param([object]$state)
     try {
-        $state | ConvertTo-Json -Depth 5 | Set-Content $stateFile -Encoding utf8
+        $state | ConvertTo-Json -Depth 10 | Set-Content $stateFile -Encoding utf8
         Write-Debug "State saved"
     } catch {
         Write-Log "Failed to save state: $_" "ERROR"
@@ -142,13 +207,175 @@ function Set-State {
 }
 
 # ============================================================================
-# Telegram Notifications (Smart with cooldown)
+# Metrics Tracking
+# ============================================================================
+function Get-Metrics {
+    if (Test-Path $metricsFile) {
+        try {
+            return Get-Content $metricsFile -Raw | ConvertFrom-Json
+        } catch {
+            return Get-DefaultMetrics
+        }
+    } else {
+        return Get-DefaultMetrics
+    }
+}
+
+function Get-DefaultMetrics {
+    return @{
+        history = @()
+        avgResponseTimeMs = 0
+        responseTimeTrend = "stable"
+        lastCheckAt = $null
+        degradationDetectedAt = $null
+    }
+}
+
+function Add-Metric {
+    param(
+        [double]$responseTimeMs,
+        [string]$status,
+        [int]$gatewayPid
+    )
+    
+    $metrics = Get-Metrics
+    $now = Get-Date
+    
+    $metric = @{
+        timestamp = $now.ToString('o')
+        responseTimeMs = [math]::Round($responseTimeMs, 2)
+        status = $status
+        gatewayPid = $gatewayPid
+    }
+    
+    # Add to history (keep last 100)
+    $metrics.history += $metric
+    if ($metrics.history.Count -gt 100) {
+        $metrics.history = $metrics.history | Select-Object -Last 100
+    }
+    
+    # Calculate average (last 10)
+    if ($metrics.history.Count -ge 10) {
+        $recent = $metrics.history | Select-Object -Last 10
+        $metrics.avgResponseTimeMs = [math]::Round(($recent | Measure-Object -Property responseTimeMs -Average).Average, 2)
+        
+        # Detect trend
+        $first5 = $recent | Select-Object -First 5 | Measure-Object -Property responseTimeMs -Average
+        $last5 = $recent | Select-Object -Last 5 | Measure-Object -Property responseTimeMs -Average
+        
+        if ($last5.Average -gt ($first5.Average * 1.5)) {
+            $metrics.responseTimeTrend = "degrading"
+            if (-not $metrics.degradationDetectedAt) {
+                $metrics.degradationDetectedAt = $now.ToString('o')
+            }
+        } elseif ($last5.Average -lt ($first5.Average * 0.8)) {
+            $metrics.responseTimeTrend = "improving"
+            $metrics.degradationDetectedAt = $null
+        } else {
+            $metrics.responseTimeTrend = "stable"
+            $metrics.degradationDetectedAt = $null
+        }
+    }
+    
+    $metrics.lastCheckAt = $now.ToString('o')
+    
+    try {
+        $metrics | ConvertTo-Json -Depth 5 | Set-Content $metricsFile -Encoding utf8
+    } catch {
+        Write-Debug "Failed to save metrics: $_"
+    }
+}
+
+# ============================================================================
+# Failure History & Pattern Learning
+# ============================================================================
+function Add-FailureHistory {
+    param(
+        [string]$reason,
+        [string]$method,
+        [hashtable]$context
+    )
+    
+    $history = @()
+    if (Test-Path $historyFile) {
+        try {
+            $history = Get-Content $historyFile -Raw | ConvertFrom-Json
+        } catch {}
+    }
+    
+    $entry = @{
+        timestamp = (Get-Date).ToString('o')
+        reason = $reason
+        method = $method
+        context = $context
+    }
+    
+    $history += $entry
+    if ($history.Count -gt 50) {
+        $history = $history | Select-Object -Last 50
+    }
+    
+    try {
+        $history | ConvertTo-Json -Depth 5 | Set-Content $historyFile -Encoding utf8
+    } catch {}
+}
+
+function Analyze-FailurePattern {
+    param([string]$currentReason)
+    
+    $state = Get-State
+    $patterns = $state.failurePatterns
+    
+    if ($patterns.$currentReason) {
+        $patterns.$currentReason++
+    } else {
+        $patterns.unknown++
+    }
+    
+    # Find dominant failure pattern
+    $dominant = ($patterns.GetEnumerator() | Sort-Object -Property Value -Descending | Select-Object -First 1).Name
+    
+    return @{
+        patterns = $patterns
+        dominant = $dominant
+        recommendation = Get-HealRecommendation -pattern $dominant
+    }
+}
+
+function Get-HealRecommendation {
+    param([string]$pattern)
+    
+    switch ($pattern) {
+        "oom" { 
+            return "Consider increasing system memory or reducing gateway load. Check for memory leaks."
+        }
+        "crash" {
+            return "Check gateway logs for panic/exception. Consider gateway rebuild or update."
+        }
+        "network" {
+            return "Check network configuration, firewall rules, and port conflicts."
+        }
+        "disk" {
+            return "Free up disk space. Check for log file bloat or database growth."
+        }
+        "nodejs" {
+            return "Check Node.js version compatibility. Consider updating Node.js runtime."
+        }
+        default {
+            return "No specific pattern detected. Manual investigation recommended."
+        }
+    }
+}
+
+# ============================================================================
+# Telegram Notifications (Smart with escalation)
 # ============================================================================
 function Send-Telegram {
     param(
         [string]$txt,
         [string]$level = "info",
-        [switch]$Force = $false
+        [switch]$Force = $false,
+        [hashtable]$data = $null
     )
     
     if ($NoNotify) {
@@ -159,8 +386,15 @@ function Send-Telegram {
     $config = Get-Config
     $state = Get-State
     
-    # Check cooldown (unless forced)
-    if (-not $Force) {
+    # Escalation: use different chat for critical alerts
+    $targetChatId = $config.chatId
+    if ($level -eq "critical" -and $config.escalationChatId) {
+        $targetChatId = $config.escalationChatId
+        Write-Debug "Escalating to critical chat: $targetChatId"
+    }
+    
+    # Check cooldown (unless forced or critical)
+    if (-not $Force -and $level -ne "critical") {
         if ($state.lastNotificationAt) {
             try {
                 $lastNotify = [DateTime]::Parse($state.lastNotificationAt)
@@ -168,7 +402,7 @@ function Send-Telegram {
                 $elapsed = (Get-Date) - $lastNotify
                 
                 if ($elapsed.TotalMinutes -lt $cooldownMin) {
-                    Write-Debug "Notification cooldown active ($([math]::Round($elapsed.TotalMinutes, 1)) min elapsed, need $cooldownMin min)"
+                    Write-Debug "Notification cooldown active ($([math]::Round($elapsed.TotalMinutes, 1)) min)"
                     return $false
                 }
             } catch {
@@ -177,31 +411,44 @@ function Send-Telegram {
         }
     }
     
-    # Format message with emoji based on level
+    # Format with emoji and level indicator
     $emoji = switch ($level) {
         "critical" { "🚨" }
         "error"    { "❌" }
         "warn"     { "⚠️" }
         "success"  { "✅" }
         "info"     { "ℹ️" }
+        "degraded" { "📉" }
         default    { "🦞" }
     }
     
-    $formattedMsg = "$emoji OpenClaw Self-Heal`n`n$txt`n`n_Time: $(Get-Date -Format 'yyyy-MM-dd HH:mm')_"
+    $priority = switch ($level) {
+        "critical" { "[CRITICAL]" }
+        "error"    { "[ERROR]" }
+        "warn"     { "[WARNING]" }
+        default    { "" }
+    }
+    
+    $formattedMsg = "$emoji OpenClaw Self-Heal $priority`n`n$txt"
+    
+    if ($data) {
+        $formattedMsg += "`n`n``````json`n$($data | ConvertTo-Json -Depth 3)`n``````"
+    }
+    
+    $formattedMsg += "`n`n_Time: $(Get-Date -Format 'yyyy-MM-dd HH:mm')_"
     
     $uri = "https://api.telegram.org/bot$($config.botToken)/sendMessage"
     
     try {
         $body = @{
-            chat_id = $config.chatId
+            chat_id = $targetChatId
             text = $formattedMsg
             parse_mode = "Markdown"
         }
         
         Invoke-RestMethod -Method Post -Uri $uri -Body $body -ErrorAction Stop | Out-Null
-        Write-Debug "Telegram notification sent"
+        Write-Debug "Telegram notification sent to $targetChatId"
         
-        # Update state
         $state.lastNotificationAt = (Get-Date).ToString('o')
         Set-State $state
         
@@ -213,16 +460,95 @@ function Send-Telegram {
 }
 
 # ============================================================================
-# Health Check Functions
+# Dependency Checks
+# ============================================================================
+function Test-SystemDependencies {
+    Write-Log "Checking system dependencies..."
+    $issues = @()
+    
+    # Check disk space
+    try {
+        $disk = Get-PSDrive -Name (Split-Path $baseDir -Qualifier).TrimEnd(':') -ErrorAction SilentlyContinue
+        if ($disk) {
+            $freeMB = [math]::Round($disk.Free / 1MB, 2)
+            $config = Get-Config
+            
+            if ($freeMB -lt $config.minFreeDiskMB) {
+                $issues += "Low disk space: ${freeMB}MB free (min: $($config.minFreeDiskMB)MB)"
+                Write-Log "DISK CHECK FAILED: ${freeMB}MB free" "WARN"
+            } else {
+                Write-Debug "Disk space OK: ${freeMB}MB free"
+            }
+        }
+    } catch {
+        Write-Debug "Could not check disk space: $_"
+    }
+    
+    # Check Node.js health
+    $config = Get-Config
+    if ($config.checkNodeHealth) {
+        try {
+            $nodeVersion = & node --version 2>&1 | Out-String
+            if ($nodeVersion -match 'v(\d+)\.') {
+                $majorVersion = [int]$matches[1]
+                if ($majorVersion -lt 18) {
+                    $issues += "Node.js version outdated: $nodeVersion (recommended: 18+)"
+                    Write-Log "NODE CHECK WARN: Version $nodeVersion" "WARN"
+                } else {
+                    Write-Debug "Node.js OK: $nodeVersion"
+                }
+            }
+        } catch {
+            $issues += "Node.js not found or not in PATH"
+            Write-Log "NODE CHECK FAILED: Node.js not found" "WARN"
+        }
+    }
+    
+    # Check if port is already in use by another process
+    try {
+        $existingConn = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue
+        if ($existingConn) {
+            $proc = Get-Process -Id $existingConn.OwningProcess -ErrorAction SilentlyContinue
+            if ($proc -and $proc.ProcessName -notlike "*node*") {
+                $issues += "Port $port in use by $($proc.ProcessName) (PID: $($proc.Id))"
+                Write-Log "PORT CHECK FAILED: Port conflict with $($proc.ProcessName)" "ERROR"
+            }
+        }
+    } catch {
+        Write-Debug "Could not check port conflicts: $_"
+    }
+    
+    return @{
+        ok = ($issues.Count -eq 0)
+        issues = $issues
+    }
+}
+
+# ============================================================================
+# Health Check Functions (with metrics)
 # ============================================================================
 function Test-HealthEndpoint {
+    param([ref]$responseTimeMs = $null)
+    
+    $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+    
     try {
         $resp = Invoke-RestMethod -Uri $healthUrl -Method Get -TimeoutSec 5 -ErrorAction Stop
+        $stopwatch.Stop()
+        
+        if ($responseTimeMs) {
+            $responseTimeMs.Value = $stopwatch.ElapsedMilliseconds
+        }
+        
         if ($resp.status -ieq "ok" -or $resp.Status -ieq "ok") { return $true }
         if ($resp.ok -eq $true) { return $true }
         if ($resp -is [string] -and $resp -match '(?i)ok') { return $true }
         return $false
     } catch {
+        $stopwatch.Stop()
+        if ($responseTimeMs) {
+            $responseTimeMs.Value = $stopwatch.ElapsedMilliseconds
+        }
         Write-Debug "Health endpoint check failed: $_"
         return $false
     }
@@ -245,19 +571,111 @@ function Get-GatewayPid {
         if ($conn) {
             return $conn.OwningProcess
         }
-    } catch {
-        # Ignore
-    }
+    } catch {}
     return $null
 }
 
-function Get-HealthJson {
+function Get-ProcessMemory {
+    param([int]$pid)
     try {
-        $json = & openclaw health --json 2>$null | Out-String
-        return $json | ConvertFrom-Json
+        $proc = Get-Process -Id $pid -ErrorAction SilentlyContinue
+        if ($proc) {
+            return @{
+                privateMemoryMB = [math]::Round($proc.PrivateMemorySize64 / 1MB, 2)
+                workingSetMB = [math]::Round($proc.WorkingSet64 / 1MB, 2)
+                cpuPercent = [math]::Round($proc.CPU, 2)
+            }
+        }
+    } catch {}
+    return $null
+}
+
+# ============================================================================
+# Root Cause Analysis
+# ============================================================================
+function Analyze-FailureReason {
+    Write-Log "Analyzing failure root cause..."
+    
+    $reasons = @()
+    
+    # Check for OOM indicators
+    $currentPid = Get-GatewayPid
+    if ($currentPid) {
+        $mem = Get-ProcessMemory -pid $currentPid
+        if ($mem -and $mem.workingSetMB -gt 500) {
+            $reasons += @{
+                type = "oom"
+                confidence = "medium"
+                detail = "Gateway using ${mem.workingSetMB}MB RAM"
+            }
+            Write-Log "POSSIBLE OOM: Gateway using ${mem.workingSetMB}MB" "WARN"
+        }
+    }
+    
+    # Check for recent crashes (check if process died unexpectedly)
+    $state = Get-State
+    if ($state.gatewayPid -and $state.gatewayPid -ne $currentPid) {
+        $reasons += @{
+            type = "crash"
+            confidence = "high"
+            detail = "Gateway PID changed from $($state.gatewayPid) to $currentPid"
+        }
+        Write-Log "POSSIBLE CRASH: PID changed from $($state.gatewayPid)" "WARN"
+    }
+    
+    # Check for network issues
+    try {
+        $testConn = Test-NetConnection -ComputerName localhost -Port $port -InformationLevel Quiet -WarningAction SilentlyContinue
+        if (-not $testConn) {
+            $reasons += @{
+                type = "network"
+                confidence = "high"
+                detail = "Cannot connect to localhost:$port"
+            }
+        }
     } catch {
-        Write-Debug "Failed to get openclaw health: $_"
-        return $null
+        $reasons += @{
+            type = "network"
+            confidence = "medium"
+            detail = "Network test failed: $_"
+        }
+    }
+    
+    # Check disk space
+    $diskCheck = Test-SystemDependencies
+    if (-not $diskCheck.ok) {
+        $diskIssues = $diskCheck.issues | Where-Object { $_ -match "disk" }
+        if ($diskIssues) {
+            $reasons += @{
+                type = "disk"
+                confidence = "high"
+                detail = $diskIssues -join "; "
+            }
+        }
+    }
+    
+    # Check Node.js
+    if ($diskCheck.issues | Where-Object { $_ -match "Node" }) {
+        $reasons += @{
+            type = "nodejs"
+            confidence = "medium"
+            detail = "Node.js issue detected"
+        }
+    }
+    
+    # Return most likely cause
+    if ($reasons.Count -gt 0) {
+        $primary = $reasons | Where-Object { $_.confidence -eq "high" } | Select-Object -First 1
+        if (-not $primary) {
+            $primary = $reasons | Select-Object -First 1
+        }
+        return $primary
+    }
+    
+    return @{
+        type = "unknown"
+        confidence = "low"
+        detail = "No specific cause identified"
     }
 }
 
@@ -323,7 +741,6 @@ function Stop-GatewayProcesses {
         }
         Start-Sleep -Seconds 3
 
-        # Force kill any remaining openclaw processes
         $processes = Get-Process | Where-Object {
             ($_.Path -like "*openclaw*" -or $_.ProcessName -like "*openclaw*") -and
             $_.Id -ne $PID
@@ -362,7 +779,6 @@ function Start-GatewayService {
         $startOut = & openclaw gateway start 2>&1 | Out-String
         Write-Debug "Gateway start output: $startOut"
 
-        # Wait for gateway to start (poll up to 6 times, 5 sec each)
         for ($attempt = 1; $attempt -le 6; $attempt++) {
             Start-Sleep -Seconds 5
             
@@ -395,7 +811,6 @@ function Run-Doctor {
         $doctorOut = & openclaw doctor --fix 2>&1 | Out-String
         Write-Debug "Doctor output: $doctorOut"
         
-        # Success indicators
         if ($doctorOut -match '(?i)(success|completed|fixed|done|gateway.*start|healthy)') {
             return $true
         }
@@ -408,73 +823,275 @@ function Run-Doctor {
 }
 
 # ============================================================================
+# Circuit Breaker Management
+# ============================================================================
+function Test-CircuitBreaker {
+    $state = Get-State
+    
+    if ($state.circuitBreakUntil) {
+        try {
+            $breakUntil = [DateTime]::Parse($state.circuitBreakUntil)
+            $now = Get-Date
+            
+            if ($now -lt $breakUntil) {
+                $remaining = [math]::Round(($breakUntil - $now).TotalMinutes, 1)
+                Write-Log "Circuit breaker active: ${remaining}m remaining" "WARN"
+                return $true
+            } else {
+                Write-Log "Circuit breaker expired, re-enabling self-heal"
+                $state.circuitBreakUntil = $null
+                $state.failures = 0
+                $state.escalationLevel = 0
+                Set-State $state
+                return $false
+            }
+        } catch {
+            Write-Log "Error parsing circuit break timestamp, resetting" "WARN"
+            $state.circuitBreakUntil = $null
+            Set-State $state
+            return $false
+        }
+    }
+    
+    return $false
+}
+
+function Trigger-CircuitBreaker {
+    param([int]$failureCount)
+    
+    $config = Get-Config
+    $state = Get-State
+    
+    $breakHours = $config.autoRecoverCircuitBreakHours
+    $breakUntil = (Get-Date).AddHours($breakHours)
+    
+    $state.circuitBreakUntil = $breakUntil.ToString('o')
+    $state.escalationLevel = [math]::Min($state.escalationLevel + 1, 3)
+    Set-State $state
+    
+    Write-Log "Circuit breaker triggered until $breakUntil" "CRITICAL"
+}
+
+# ============================================================================
+# Adaptive Retry Logic
+# ============================================================================
+function Get-AdaptiveRetryDelay {
+    param([int]$attempt)
+    
+    $state = Get-State
+    $config = Get-Config
+    
+    # Use adaptive delay from state if available, otherwise calculate
+    $baseDelay = if ($state.adaptiveRetryDelaySec) { $state.adaptiveRetryDelaySec } else { $config.initialRetryDelaySec }
+    
+    # Exponential backoff with cap
+    $delay = [math]::Min($baseDelay * [math]::Pow(2, $attempt - 1), $config.maxRetryDelaySec)
+
+    Write-Debug "Retry delay for attempt $attempt : $($delay)s (base: $($baseDelay)s)"
+    return [int]$delay
+}
+
+function Update-AdaptiveConfig {
+    param(
+        [bool]$success,
+        [int]$attemptsUsed
+    )
+    
+    $state = Get-State
+    $config = Get-Config
+    
+    if ($success) {
+        # If healed quickly, reduce retry delay
+        if ($attemptsUsed -le 1 -and $state.adaptiveRetryDelaySec -gt $config.initialRetryDelaySec) {
+            $state.adaptiveRetryDelaySec = [math]::Max($config.initialRetryDelaySec, $state.adaptiveRetryDelaySec * 0.8)
+            Write-Log "Adaptive: Reduced retry delay to $($state.adaptiveRetryDelaySec)s"
+        }
+        $state.consecutiveSuccesses++
+        
+        # After many successes, reset to default
+        if ($state.consecutiveSuccesses -ge 10) {
+            $state.adaptiveRetryDelaySec = $config.initialRetryDelaySec
+            $state.consecutiveSuccesses = 0
+        }
+    } else {
+        # If failed, increase retry delay
+        $state.adaptiveRetryDelaySec = [math]::Min($config.maxRetryDelaySec, $state.adaptiveRetryDelaySec * 1.2)
+        $state.consecutiveSuccesses = 0
+        Write-Log "Adaptive: Increased retry delay to $($state.adaptiveRetryDelaySec)s"
+    }
+    
+    Set-State $state
+}
+
+# ============================================================================
+# Predictive Degradation Detection
+# ============================================================================
+function Test-PredictiveDegradation {
+    $config = Get-Config
+    $metrics = Get-Metrics
+    
+    if ($metrics.avgResponseTimeMs -gt 0) {
+        if ($metrics.avgResponseTimeMs -ge $config.healthResponseTimeCritMs) {
+            Write-Log "CRITICAL DEGRADATION: Avg response ${metrics.avgResponseTimeMs}ms >= ${config.healthResponseTimeCritMs}ms" "CRITICAL"
+            return "critical"
+        } elseif ($metrics.avgResponseTimeMs -ge $config.healthResponseTimeWarnMs) {
+            Write-Log "WARNING DEGRADATION: Avg response ${metrics.avgResponseTimeMs}ms >= ${config.healthResponseTimeWarnMs}ms" "WARN"
+            return "warning"
+        }
+    }
+    
+    if ($metrics.responseTimeTrend -eq "degrading") {
+        $degradedSince = $null
+        if ($metrics.degradationDetectedAt) {
+            try {
+                $degradedSince = [DateTime]::Parse($metrics.degradationDetectedAt)
+                $hours = [math]::Round((Get-Date - $degradedSince).TotalHours, 1)
+                Write-Log "Degrading trend detected ${hours}h ago" "WARN"
+                return "trend"
+            } catch {}
+        }
+    }
+    
+    return $null
+}
+
+# ============================================================================
 # Main Logic
 # ============================================================================
-Write-Log "=========================================="
-Write-Log "Self-heal script starting"
-Write-Log "=========================================="
+Write-Log "==========================================" "INFO"
+Write-Log "Self-heal script v3.0 starting" "INFO"
+Write-Log "==========================================" "INFO"
 
 $config = Get-Config
 $state = Get-State
 $state.totalRuns = $state.totalRuns + 1
 
-Write-Log "Configuration loaded: maxAttempts=$($config.maxAttempts), circuitBreak=$($config.circuitBreakThreshold)"
-Write-Log "Current consecutive failures: $($state.failures)"
-Write-Log "Total runs: $($state.totalRuns), Total heals: $($state.totalHeals)"
+Write-Log "Config: maxAttempts=$($config.maxAttempts), circuitBreak=$($config.circuitBreakThreshold)" "INFO"
+Write-Log "State: failures=$($state.failures), heals=$($state.totalHeals), runs=$($state.totalRuns)" "INFO"
 
-# Check current health status
-$healthOk = Test-HealthEndpoint
+# Check circuit breaker
+if (Test-CircuitBreaker) {
+    Write-Log "Skipping heal - circuit breaker active" "WARN"
+    exit 0
+}
+
+# Check for predictive degradation
+$degradation = Test-PredictiveDegradation
+if ($degradation -and -not $ForceRun) {
+    $metrics = Get-Metrics
+    $msg = "Predictive degradation detected`n"
+    $msg += "Avg Response: ${metrics.avgResponseTimeMs}ms`n"
+    $msg += "Trend: ${metrics.responseTimeTrend}`n"
+    $msg += "Recommendation: Monitor closely, may need intervention"
+    
+    Send-Telegram -txt $msg -level "degraded" -data @{
+        avgResponseTimeMs = $metrics.avgResponseTimeMs
+        trend = $metrics.responseTimeTrend
+    }
+}
+
+# Check system dependencies
+$deps = Test-SystemDependencies
+if (-not $deps.ok) {
+    Write-Log "Dependency check failed: $($deps.issues -join ', ')" "ERROR"
+    $state.lastFailureReason = "dependency"
+    Set-State $state
+    
+    Send-Telegram -txt "System dependency issues detected:`n$($deps.issues -join "`n")" -level "error"
+}
+
+# Check current health status with metrics
+$responseTime = 0
+$healthOk = Test-HealthEndpoint ([ref]$responseTime)
 $portListening = Test-GatewayPort
 $currentPid = Get-GatewayPid
 
+# Record metrics
+Add-Metric -responseTimeMs $responseTime -status $(if ($healthOk) { "healthy" } else { "down" }) -gatewayPid $currentPid
+
 if ($healthOk -or $portListening) {
-    Write-Log "Health check PASSED - gateway is running (PID: $currentPid)"
+    Write-Log "Health check PASSED - gateway running (PID: $currentPid, response: ${responseTime}ms)" "INFO"
     
-    # Update state
     $state.lastSuccessAt = (Get-Date).ToString('o')
     $state.healthStatus = "healthy"
     $state.gatewayPid = $currentPid
+    if ($state.consecutiveSuccesses) {
+        $state.consecutiveSuccesses = $state.consecutiveSuccesses + 1
+    } else {
+        $state.consecutiveSuccesses = 1
+    }
     
-    # Reset failure count if we were in failure state
     if ($state.failures -gt 0) {
         Write-Log "Resetting failure count (was $($state.failures))"
         $state.failures = 0
+        $state.escalationLevel = 0
         Set-State $state
-        
-        # Send recovery notification
-        Send-Telegram -txt "Gateway recovered and is now healthy on port $port (PID: $currentPid)" -level "success"
+        Send-Telegram -txt "Gateway recovered and healthy on port $port (PID: $currentPid, response: ${responseTime}ms)" -level "success"
     } else {
         Set-State $state
     }
     
-    Write-Log "Self-heal check completed successfully"
+    Write-Log "Self-heal check completed successfully" "INFO"
     exit 0
 }
 
 # Gateway is DOWN - start healing
-Write-Log "Health check FAILED - gateway is NOT running on port $port" "WARN"
+Write-Log "Health check FAILED - gateway NOT running on port $port" "WARN"
 $state.lastFailureAt = (Get-Date).ToString('o')
 $state.healthStatus = "down"
 Set-State $state
 
-# Send initial failure notification (only if not in cooldown)
+# Root cause analysis
+$rootCause = Analyze-FailureReason
+Write-Log "Root cause analysis: $($rootCause.type) (confidence: $($rootCause.confidence)) - $($rootCause.detail)" "WARN"
+$state.lastFailureReason = $rootCause.type
+
+# Analyze failure patterns
+$patternAnalysis = Analyze-FailurePattern -currentReason $rootCause.type
+$state.failurePatterns = $patternAnalysis.patterns
+
+# Send initial notification
 if ($state.failures -eq 0) {
-    Send-Telegram -txt "Gateway is DOWN on port $port. Starting self-heal..." -level "warn"
+    $msg = "Gateway is DOWN on port $port`n"
+    $msg += "Root Cause: $($rootCause.type) ($($rootCause.confidence))`n"
+    $msg += "Detail: $($rootCause.detail)`n"
+    $msg += "Starting self-heal..."
+    
+    Send-Telegram -txt $msg -level "warn" -data @{
+        rootCause = $rootCause.type
+        confidence = $rootCause.confidence
+        detail = $rootCause.detail
+        recommendation = $patternAnalysis.recommendation
+    }
+}
+
+# Add to failure history
+Add-FailureHistory -reason $rootCause.type -method "initial" -context @{
+    gatewayPid = $currentPid
+    detail = $rootCause.detail
 }
 
 # ============================================================================
 # Healing Phase 1: Try to start gateway
 # ============================================================================
-Write-Log "Phase 1: Attempting to start gateway service..."
+Write-Log "Phase 1: Attempting to start gateway service..." "INFO"
 $healed = $false
 $attemptsUsed = 0
 
 for ($i = 1; $i -le $config.maxAttempts; $i++) {
-    Write-Log "Gateway start attempt $i/$($config.maxAttempts)"
+    $delay = Get-AdaptiveRetryDelay -attempt $i
+    Write-Log "Gateway start attempt $i/$($config.maxAttempts) (delay: ${delay}s)" "INFO"
     
     if ($i -gt 1) {
-        Send-Telegram -txt "Retry attempt $i/$($config.maxAttempts): starting gateway on port $port" -level "warn"
-        Start-Sleep -Seconds $config.retryDelaySec
+        Start-Sleep -Seconds $delay
+        
+        $escalationLevel = 0
+        if ($state.escalationLevel) {
+            $escalationLevel = $state.escalationLevel
+        }
+        if ($escalationLevel -ge 1) {
+            Send-Telegram -txt "Retry attempt $i/$($config.maxAttempts) for gateway on port $port`nEscalation Level: $escalationLevel" -level "warn"
+        }
     }
     
     if (Start-GatewayService) {
@@ -485,35 +1102,45 @@ for ($i = 1; $i -le $config.maxAttempts; $i++) {
 }
 
 if ($healed) {
-    Write-Log "Gateway started successfully after $attemptsUsed attempt(s)"
+    Write-Log "Gateway started successfully after $attemptsUsed attempt(s)" "INFO"
     $state.totalHeals = $state.totalHeals + 1
     $state.failures = 0
     $state.lastSuccessAt = (Get-Date).ToString('o')
     $state.healthStatus = "healthy"
     $state.gatewayPid = Get-GatewayPid
+    $state.lastHealMethod = "start"
+    
+    Update-AdaptiveConfig -success $true -attemptsUsed $attemptsUsed
     Set-State $state
     
-    Send-Telegram -txt "Gateway recovered after $attemptsUsed attempt(s) on port $port" -level "success"
+    $msg = "Gateway recovered after $attemptsUsed attempt(s) on port $port`n"
+    $msg += "Method: gateway start`n"
+    if ($patternAnalysis.recommendation) {
+        $msg += "Tip: $($patternAnalysis.recommendation)"
+    }
     
-    Write-Log "Self-heal completed successfully"
+    Send-Telegram -txt $msg -level "success"
+    
+    Write-Log "Self-heal completed successfully" "INFO"
     exit 0
 }
 
 # ============================================================================
 # Healing Phase 2: Try doctor for deeper issues
 # ============================================================================
-Write-Log "Phase 2: Gateway start failed, running doctor..."
+Write-Log "Phase 2: Gateway start failed, running doctor..." "WARN"
 Send-Telegram -txt "Gateway start failed. Running configuration fixes..." -level "warn"
 
 $doctorHealed = $false
 
 for ($i = 1; $i -le 2; $i++) {
-    Write-Log "Doctor attempt $i/2"
+    Write-Log "Doctor attempt $i/2" "INFO"
     
     if (Run-Doctor) {
-        Start-Sleep -Seconds $config.retryDelaySec
+        Start-Sleep -Seconds $config.initialRetryDelaySec
         
-        if (Test-HealthEndpoint) {
+        $responseTime = 0
+        if (Test-HealthEndpoint ([ref]$responseTime)) {
             $doctorHealed = $true
             break
         } else {
@@ -524,22 +1151,25 @@ for ($i = 1; $i -le 2; $i++) {
     }
     
     if ($i -lt 2) {
-        Start-Sleep -Seconds $config.retryDelaySec
+        Start-Sleep -Seconds $config.initialRetryDelaySec
     }
 }
 
 if ($doctorHealed) {
-    Write-Log "Gateway recovered via doctor after $i attempt(s)"
+    Write-Log "Gateway recovered via doctor" "INFO"
     $state.totalHeals = $state.totalHeals + 1
     $state.failures = 0
     $state.lastSuccessAt = (Get-Date).ToString('o')
     $state.healthStatus = "healthy"
     $state.gatewayPid = Get-GatewayPid
+    $state.lastHealMethod = "doctor"
+    
+    Update-AdaptiveConfig -success $true -attemptsUsed 0
     Set-State $state
     
-    Send-Telegram -txt "Gateway recovered via doctor after $i attempt(s)" -level "success"
+    Send-Telegram -txt "Gateway recovered via doctor configuration fixes" -level "success"
     
-    Write-Log "Self-heal completed successfully via doctor"
+    Write-Log "Self-heal completed successfully via doctor" "INFO"
     exit 0
 }
 
@@ -549,16 +1179,49 @@ if ($doctorHealed) {
 Write-Log "All healing attempts FAILED" "ERROR"
 $state.failures += 1
 $state.lastFailureAt = (Get-Date).ToString('o')
+
+Update-AdaptiveConfig -success $false -attemptsUsed $config.maxAttempts
 Set-State $state
 
-Send-Telegram -txt "FAILED to recover gateway on port $port after all attempts (failures: $($state.failures)/$($config.circuitBreakThreshold))" -level "error"
+# Escalation logic
+$escalationLevel = 0
+if ($state.escalationLevel) {
+    $escalationLevel = $state.escalationLevel
+}
+$escalationMsg = ""
+if ($state.failures -ge $config.escalateAfterFailures) {
+    $escalationLevel = [math]::Min($escalationLevel + 1, 3)
+    $state.escalationLevel = $escalationLevel
+    Set-State $state
+    
+    $escalationMsg = "`n`nESCALATION LEVEL: $escalationLevel/3"
+}
 
-Write-Log "Consecutive failures: $($state.failures) / $($config.circuitBreakThreshold)"
+$msg = "FAILED to recover gateway on port $port`n"
+$msg += "Failures: $($state.failures)/$($config.circuitBreakThreshold)$escalationMsg`n"
+$msg += "Root Cause: $($rootCause.type)`n"
+$msg += "Recommendation: $($patternAnalysis.recommendation)"
+
+Send-Telegram -txt $msg -level "error" -data @{
+    failures = $state.failures
+    threshold = $config.circuitBreakThreshold
+    rootCause = $rootCause.type
+    recommendation = $patternAnalysis.recommendation
+    escalationLevel = $escalationLevel
+}
+
+# Add to failure history
+Add-FailureHistory -reason $rootCause.type -method "failed" -context @{
+    attempts = $config.maxAttempts
+    doctorAttempts = 2
+    escalationLevel = $escalationLevel
+}
 
 # Check circuit breaker
 if ($state.failures -ge $config.circuitBreakThreshold) {
-    Write-Log "Circuit breaker triggered - disabling cron job" "CRITICAL"
-    Send-Telegram -txt "CIRCUIT BREAKER: Self-heal cron job disabled after $($state.failures) consecutive failures" -level "critical" -Force
+    Trigger-CircuitBreaker -failureCount $state.failures
+    
+    Send-Telegram -txt "🚨 CIRCUIT BREAKER TRIGGERED`n`nSelf-heal disabled after $($state.failures) consecutive failures`n`nManual intervention required`n`nRecommendation: $($patternAnalysis.recommendation)" -level "critical" -Force
     
     try {
         $jobListJson = & openclaw cron list --json 2>$null | Out-String
@@ -568,10 +1231,8 @@ if ($state.failures -ge $config.circuitBreakThreshold) {
         
         if ($job -and $job.id) {
             & openclaw cron disable $job.id 2>$null | Out-Null
-            Write-Log "Disabled cron job $($job.id)"
-            Send-Telegram -txt "Cron job $($job.id) has been disabled. Manual intervention required." -level "critical"
-        } else {
-            Write-Log "Could not find selfheal cron job" "WARN"
+            Write-Log "Disabled cron job $($job.id)" "CRITICAL"
+            Send-Telegram -txt "Cron job $($job.id) has been disabled" -level "critical"
         }
     } catch {
         Write-Log "Error disabling cron job: $_" "ERROR"
@@ -580,3 +1241,4 @@ if ($state.failures -ge $config.circuitBreakThreshold) {
 
 Write-Log "Self-heal script exiting with error" "ERROR"
 exit 1
+
