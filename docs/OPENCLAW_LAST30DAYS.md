@@ -4,22 +4,32 @@
 
 Integrate the `last30days` research skill with OpenClaw to enable deep research via Telegram chat.
 
-## Installation
+**IMPORTANT**: The last30days skill requires **Python 3.x** to run. If Python is not installed on your system, you have two options:
 
-### Option 1: Use Qwen Code's Built-in Skill (Recommended)
+1. **Install Python** (recommended) - Download from https://python.org or `winget install Python.Python.3.12`
+2. **Use Qwen Code directly** - Run `/last30days <topic>` in Qwen Code which has the skill built-in
 
-The `last30days` skill is already installed at `~/.qwen/skills/last30days/`.
+## Prerequisites
 
-To use with OpenClaw, create a wrapper script that OpenClaw can call.
-
-### Option 2: Install as OpenClaw Workspace Script
+### Option A: Python Installed (Full Functionality)
 
 ```powershell
-# Copy skill to OpenClaw workspace
-Copy-Item "~/.qwen/skills/last30days" -Recurse "C:\Users\filip\.openclaw\workspace\last30days"
+# Install Python via winget (recommended)
+winget install Python.Python.3.12
 
-# Create wrapper script for OpenClaw
+# Or via Chocolatey
+choco install python3
+
+# Verify installation
+python --version
 ```
+
+### Option B: Use Qwen Code (No Installation Required)
+
+The `last30days` skill is already available in Qwen Code:
+- Open Qwen Code terminal
+- Type: `/last30days <your topic>`
+- Research runs automatically
 
 ## OpenClaw Wrapper Script
 
